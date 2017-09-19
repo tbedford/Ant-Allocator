@@ -117,6 +117,9 @@ subtract the node size to get the start of the metadata.
 
 ## Really simple code
 
+This code example shows a really basic case where you have one node,
+one block and the block is the whole heap (minus room for the node):
+
 ```C
 #include<stdio.h>
 #include<stdlib.h>
@@ -185,6 +188,9 @@ int main (int argc, char **argv)
 }
 
 ```
+
+See the code in the repository for a more usueful example. NOTE: the
+code in the repo is evolving.
 
 ## Alignment
 
