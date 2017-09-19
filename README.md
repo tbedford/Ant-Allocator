@@ -60,7 +60,9 @@ allocation more than 10KB will fail.
 ## Implementation
 
 In a real implementation the nodes (metadata) will be part of the
-blocks, and not separate.
+blocks, and not separate. The reason for this how would you otherwise
+allocate memory for the nodes - there's no `malloc()` available to you
+because that's what you are implementing.
 
 Basic node data structure would look something like:
 
@@ -79,14 +81,35 @@ typedef struct node_s {
 This is not the most efficient data structure though, but serves to
 get a very basic design up and running.
 
+## Heap init
+
+When you initialize the heap you will most likely call down into the
+OS via a system call (it used to be something like `brk()` or
+`sbrk()`. So why not simply write a `malloc()` that just uses a system
+call every time you want to make an allocation? In a word -
+efficiency. OS system calls are comparatively slow, and a fairly
+complex application might make thousands of calls to allocate
+memory. Imagine something like a DBMS or a game making thousands of
+little allocations for small buffers, strings, graphics and so
+on. Making a system call every time would be horribly inefficient.
+
+However, there is one point at which you can get away with it and
+that's when your app or system starts. It makes a one-time call into
+the OS to grab a nice hunk of memory to manage as the
+heap. Potentially you could go back cap in hand to the OS at some
+point to expand the heap, but you really don't want to be doing that
+on every `malloc()`.
+
+You probably will need something to free up the main heap too.
+
 ## malloc()
 
-Simple case: You would walk along the linked-list checking for the
-first free block of suitable size. Unless the free block was of
-exactly the right size, it would then be split into an allocated block
-and a new free block in the list (with its new metadata). This
-requires you insert a new node (a free block) into the
-linked-list. This is basically the "first fit" approach.
+Simple case: You walk along the linked-list checking for the first
+free block of suitable size. Unless the free block was of exactly the
+right size, it would then be split into an allocated block and a new
+free block in the list (with its new metadata). This requires you
+insert a new node (a free block) into the linked-list. This is
+basically the "first fit" approach.
 
 ## free()
 
@@ -209,3 +232,4 @@ TODO
 * [Jemalloc](https://linux.die.net/man/3/jemalloc)
 * [size_t](https://stackoverflow.com/questions/2550774/what-is-size-t-in-c#2550799)
 * [Fuschia/Magenta OS](https://github.com/fuchsia-mirror/magenta/blob/master/kernel/lib/heap/cmpctmalloc/cmpctmalloc.c)
+
