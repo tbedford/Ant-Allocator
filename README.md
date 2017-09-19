@@ -99,7 +99,7 @@ free, and coalesce any adjacent blocks, updating metadata as required.
 ## Blocks containing metadata
 
 In practice the nodes for managing metadata would be part of the
-allocated block. This is shown in a modified version of the previous
+allocated block. This is shown in a modified version of the first
 diagram:
 
 ![Heap Memory Allocator with nodes in block](./images/Memory_allocator_2.png)
