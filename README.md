@@ -3,7 +3,7 @@ A very, very simple memory allocator
 
 The following diagram shows the basic design / data structures fo a simple heap allocator:
 
-![Heap Memory Allocator](./Memory_allocator_1.png)
+![Heap Memory Allocator](./images/Memory_allocator_1.png)
 
 It helps to visualize the blocks (used and free) as separate from the nodes that manage the blocks (metadata). The nodes would contain a pointer to the block, the size of the block, whether the block is used or not, and a couple of pointers to allow the nodes to be hooked into a doubly linked list. A doubly linked list seems a bit complex, but there are points where you will need to check the previous and next blocks to see if they are free and can be coalesced with the current block. For example, if you have free, used, free blocks and then you free the used block you have free, free, free. These blocks can be colalsced inot one free block.  
 
@@ -38,7 +38,7 @@ Simple case: You are given the address of the block to free. In a real implement
 
 In practice the nodes for managing metadata would be part of the allocated block. This is shown in a modified version of the previous diagram:
 
-![Heap Memory Allocator with nodes in block](./Memory_allocator_2.png)
+![Heap Memory Allocator with nodes in block](./images/Memory_allocator_2.png)
 
 Note that it is necessary to allocate larger than the requested block size - that is, you need to allocate block size plus node size. You no longer need to store the pointer to the block in a node (although I do to make things easier). As you know the location of the node in memory (either passed to free(), or from walking the list during malloc()), you can simply add a constant to it (the node size) to find the start point of the actual allocation. 
 
