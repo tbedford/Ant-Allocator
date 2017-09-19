@@ -2,29 +2,43 @@
 
 A very, very simple memory allocator for educational purposes.
 
-The following diagram shows the basic design / data structures for a
-simple heap allocator:
+Features:
 
-![Heap Memory Allocator](./images/Memory_allocator_1.png)
+* Minimal design
+* Err, that's about it!
+
+## Overview 
 
 After struggling with pen and paper for a while, I realized that it
 helps to visualize the blocks (used and free) as separate from the
 nodes that manage the blocks (metadata).
 
+The following diagram shows this:
+
+![Heap Memory Allocator](./images/Memory_allocator_1.png)
+
+Nodes are for managing blocks, blocks are the chunks of memory an app
+will actually use.
+
 The nodes contain a pointer to the block, the size of the block,
 whether the block is used or not, and a couple of pointers to allow
-the nodes to be hooked into a doubly-linked list.
+the nodes to be hooked into a doubly-linked list. The linked-list is
+used when searching for a suitable block to allocate. It's also used a
+bit when freeing up allocated memory, because you might want to
+scrunch several free blocks together. 
 
 A doubly-linked list seems a bit complex, but there are points where
 you will need to check the previous and next blocks to see if they are
 free and therefore can be coalesced with the current block. For
-example, if you have free, used, free blocks and then you free the
-used block you have free, free, free. These blocks can be coalesced
+example, if you have [free, used, free] blocks and then you free the
+used block you have [free, free, free]. These blocks can be coalesced
 into one free block.
 
 Note that, in the diagram, a `free()` has meant that there are two
 contiguous free blocks (adjacent red blocks) that could be coalesced
 into one free block, thus helping to avoid memory fragmentation.
+
+## Memory fragmentation
 
 Memory fragmentation occurs where you have a number of free blocks,
 but they are not of sufficient size to service a `malloc()`. You
@@ -38,21 +52,28 @@ allocation area ful of small holes. For example you could end up with
 say 32KB total free, but only be able to service a `malloc()` of
 4KB. Not good.
 
+![Memory fragmentation](./images/Memory_allocator_3.png)
+
+In the above diagram, there is 70KB free on the heap. However, any
+allocation more than 10KB will fail. 
+
+## Implementation
+
 In a real implementation the nodes (metadata) will be part of the
 blocks, and not separate.
 
-Basic node data structure would look something like (in dodgy
-pseudo-code):
+Basic node data structure would look something like:
 
 ```C
 // node for managing a block
-typedef node_s struct {
-    block_ptr *b; // points to a memory block
-    unsigned int size; // size of block, look into size_t
-    boolean_t used; // used: true or false
-    node_s *next;
-    node_s *prev;	   
- } node_t;
+typedef struct node_s {
+    unsigned int id;
+    void *block;
+    size_t size; // of actual usable block
+    bool free;
+    struct node_s *next;
+    struct node_s *prev;
+} node_t;
 ```
 
 This is not the most efficient data structure though, but serves to
