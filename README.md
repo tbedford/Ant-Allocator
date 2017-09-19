@@ -1,5 +1,6 @@
 # Ant-Allocator
-A very, very simple memory allocator
+
+A very, very simple memory allocator for educational purposes.
 
 The following diagram shows the basic design / data structures for a
 simple heap allocator:
