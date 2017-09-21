@@ -156,7 +156,39 @@ and subtract the node size to get the start of the metadata.
 
 ## Wilderness
 
-TODO
+Wilderness is the term given to the block of free memory. At the
+start, when you initialize the heap, you have a list structure with
+head and tail pointing at NULL. You have no nodes in the system. But
+you have a big hunk of free memory you grabbed via a system call. This
+bit block of free memory is your 'wilderness'. What you could do is at
+the outset you make the wilderness a big free block with node data. So
+you start out with one big free block node - that is one item in the
+list. I did start to do this but decided to separate out the wilderness.
+
+So you have this big lump of free memory call the wilderness and no
+nodes in your list, and now you do a `malloc()`. What happens is is
+some memory to satisfty the `malloc()` request is grabbed from the
+wilderness to create the first node in the list. The wilderness
+pointer is adjusted so that the wilderness area is shrunk
+according. You now have one node in your list which is the first
+allocated block. You will make further allocations, shrinking the
+wilderness accordingly.
+
+But then you want to free up an already allocated block. This
+operation would not affect the wilderness. What would happen is that
+you can go directly to the node is the list, and set it to 'free' - no
+other changes are required, although in a more complex implementation
+you could coalesce any adjacent free blocks to make a bigger free
+block. So now you just have a normal node, but it's marked as
+free. When you scan along the list to find a suitable free block this
+one could possibly be used (if it's big enough) and you don't have to
+shrink the wilderness at all.
+
+One advantage of treating the wilderness as something different is it
+allows you to have some code that monitors its size and if it gets to
+a preset size you can go back to the OS and ask for more memory to
+extend the wilderness. You would be performing essentially a system
+level `realloc()`. I plan on attempting to implement this feature.
 
 ## Alignment
 
