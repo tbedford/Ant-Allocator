@@ -113,6 +113,13 @@ void print_list (list_t *l)
     }
 }
 
+// sort list
+
+void sort_list (list_t *l)
+{
+    // TODO
+}
+
 // destroy node
 
 void destroy_node (node_t *n)

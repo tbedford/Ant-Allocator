@@ -1,67 +1,82 @@
 #include<stdio.h>
 #include<stdlib.h>
 
+// a block is node + mem
+// wilderness managed separately
+
 typedef unsigned char byte;
 typedef enum { false, true } bool;
 
-typedef struct block_s {
-    unsigned int id;
+typedef struct node_s {
+    unsigned int id; // check for corruption
     void *mem; // useable memory
-    size_t mem_sz; // of mem (block_sz = sizeof(block_t)+mem_sz)
-    bool free;
-    struct block_s *next;
-    struct block_s *prev;
-} block_t;
+    size_t mem_sz; // size of usable memory 
+    bool free; // used or free block
+    struct node_s *next;
+    struct node_s *prev;
+} node_t;
 
 typedef struct heap_s {
-    block_t *head; // points to start of whole heap (and first block in list)
-    block_t *tail;
-    size_t heap_sz;
-    void *heap;
+    node_t *head; // points to start of whole heap (and first block in list)
+    node_t *tail; // last node in the list
+    size_t sysmem_sz; // size of memory grabbed from system 
+    void *sysmem; // pointer to grabbed system memory
+    void *wilderness; // will change
 } heap_t;
 
-void block_init (void *block, size_t block_sz);
 
-void heap_init (heap_t *hp, size_t hs)
+
+void * create_heap (heap_t *h, size_t s)
 {
-    hp->heap = malloc(hs);
-    hp->heap_sz = hs;
-
-    // At the outset, the heap is one big free block
-    block_init(hp->heap, hs);
-
-    hp->head = hp->heap;
-    hp->tail = hp->head;
-}
-
-void heap_free(void *hp)
-{
-    free(hp);
-}
-
-// Given a pointer and a size we can turn this free space into a block
-void block_init (void *block, size_t block_sz)
-{
-    block_t *bp = (block_t *) block;
-    bp->id = 0x1234; // for heap checking / testing  
-    bp->mem_sz = block_sz - sizeof(block_t);
-    bp->free = true;
-    bp->next = NULL;
-    bp->prev = NULL;
-
-}
-
-block_t * find_free_block (size_t size)
-{
-
-
+    h->sysmem = malloc(s);
+    h->sysmem_sz = s;
     
+    h->head = NULL;
+    h->tail = NULL;
+
+    return h->sysmem; // wilderness size will change
+}
+
+void destroy_heap(heap_t *h)
+{
+    free(h->sysmem);
+}
+
+void * wild_alloc (heap_t *h, size_t s)
+{
+    void *w = h->wilderness;
+    h->wilderness = w + s; // set new wilderness pointer
+
+    return w; // ptr to block
+}
+
+// creating a new list node
+// mem_sz is user requested mem size from ant_alloc()
+node_t *create_node (heap_t *h, size_t mem_sz)
+{
+    node_t *n = (node_t *) wild_alloc (h, mem_sz + sizeof(node_t));
+    
+    n->id = 0x1D4A11; // for heap checking / testing  
+    n->mem_sz = mem_sz;
+    n->mem = (void *) n + sizeof(node_t);
+    n->free = true;
+    n->next = NULL;
+    n->prev = NULL;
+
+    return n;
+}
+
+node_t * find_free_node (size_t size)
+{
+    // TODO
+
+    return NULL;
 }
 
 // return ptr to usable memory 
-void * ant_alloc (size_t size)
+void * ant_alloc (size_t mem_sz)
 {
-    
+    // TODO
 
     return 0;
 }
@@ -78,13 +93,16 @@ int main (int argc, char **argv)
 
     heap_t heap;
     size_t heap_sz = 8000;
-    heap_init(&heap, heap_sz); 
+
+    create_heap(&heap, heap_sz); 
 
 
     // do stuff
+
+    void *mem = ant_alloc(1000);
     
     
-    heap_free (heap.heap);
+    destroy_heap (&heap);
     
     return 0;
 }
