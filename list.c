@@ -56,7 +56,6 @@ void add_node (list_t *l, node_t *n)
     {
         l->head = n;
         l->tail = n;
-        l->items = 1;
     }
     else // add after tail
     {
@@ -65,6 +64,8 @@ void add_node (list_t *l, node_t *n)
         l->tail->next = n;
         l->tail = n;
     }
+    
+    l->items = l->items + 1;
     
 }
 
@@ -99,12 +100,16 @@ void print_list (list_t *l)
     else
     {
         node_t *rover = l->head;
-
+        size_t i = 0;
+        
         do {
             printf ("Data: %d\n", (unsigned int)rover->data);
             rover = rover->next;
+            i++;
         }
         while (rover != NULL);
+
+        printf("%zu items in list and %zu printed.\n", l->items, i);
     }
 }
 
