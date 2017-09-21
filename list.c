@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// !! No error checking !!
+// !!! No error checking !!!
 
 typedef unsigned int data_t;
 
@@ -80,23 +80,58 @@ void insert_node (list_t *list, node_t *n, node_t *p)
 }
 
 // remove node (from point p)
-    
+
+void remove_node (node_t *n)
+{
+    // TODO
+}
+
 // print list
 
 void print_list (list_t *l)
 {
-    node_t *rover = l->head;
 
-    do {
-        printf ("Data: %d\n", (unsigned int)rover->data);
-        rover = rover->next;
+    if (l->items == 0)
+    {
+        printf("Empty list.\n");
+
     }
-    while (rover != NULL);
+    else
+    {
+        node_t *rover = l->head;
+
+        do {
+            printf ("Data: %d\n", (unsigned int)rover->data);
+            rover = rover->next;
+        }
+        while (rover != NULL);
+    }
 }
 
 // destroy node
 
+void destroy_node (node_t *n)
+{
+    free (n);
+}
+
 // destroy list
+
+void destroy_list (list_t *l)
+{
+    if (l->items == 0) return; // nothing to destroy
+
+    node_t *rover = l->head;
+    node_t *node;
+    
+    do {
+        node = rover;
+        free (node);
+        rover = rover->next;
+    }
+    while (rover != NULL);
+    printf("List destroyed.\n");
+}
 
 // main
 
@@ -108,17 +143,24 @@ int main (int c, char **argv)
     
     create_list (&list);
 
+    print_list (&list);
+    
     node = create_node (12);
     add_node(&list, node);
 
+    print_list (&list);
+    
     node = create_node (34);
     add_node(&list, node);
 
     node = create_node (56);
     add_node(&list, node);
 
+    printf("===\n");
     print_list(&list);
 
+    destroy_list(&list);
+    
     return 0;
 }
 
