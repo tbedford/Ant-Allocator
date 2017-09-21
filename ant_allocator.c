@@ -27,7 +27,6 @@ typedef struct heap_s {
 } heap_t;
 
 
-
 void * create_heap (heap_t *h, size_t s)
 {
     h->sysmem = malloc(s);
@@ -68,7 +67,33 @@ node_t *create_node (heap_t *h, size_t mem_sz)
     return n;
 }
 
-node_t * find_free_node (size_t size)
+// add node to end of list
+void add_node (heap_t *h, node_t n)
+{
+
+    if (h->head == NULL) // list is empty
+    {
+        h->head = n;
+        h->tail = n;
+    }
+    else // add after tail
+    {
+        n->prev = h->tail;
+        n->next = NULL;
+        h->tail->next = n;
+        h->tail = n;
+    }
+    
+}
+
+
+// find a node that had suitable memory available
+// s is mem_sz - that is user requested size
+// in the simple case we find first node with mem_sz > s
+// this is first fit. We then have the problem of what to do about
+// the wasted memory if mem_sz is a lot smaller than s
+// (turn it into a new free block)
+node_t * find_free_node (heap_t h, size_t s)
 {
     // TODO
 
