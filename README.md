@@ -57,6 +57,28 @@ left, and then coalesce that with the third block.
 TODO: look at when you find a block but it's a lot bigger than
 required, so you have to split the block.
 
+## Blocks containing metadata
+
+For the purposes of my implementation a block is a lump that contains
+both the node and the memory that the requesting application will
+actually use for its own purposes.
+
+This is shown in a modified version of the first diagram:
+
+![Heap Memory Allocator with nodes in block](./images/Memory_allocator_2.png)
+
+Note that it is necessary to allocate larger than the requested memory
+size - that is, you need to allocate memory size plus node size.
+
+As you know the location of the node in memory (calculated from ptr
+passed to free(), or from walking the list during malloc()), you can
+simply add a constant to it (the node size) to find the start point of
+the actual allocation. However, a pointer to memory is stored in the
+node for convenience.
+
+Remember when implementing `free()` you would take the passed pointer
+and subtract the node size to get the start of the metadata.
+
 ## Memory fragmentation
 
 Memory fragmentation occurs where you have a number of free blocks,
@@ -126,28 +148,6 @@ information to check adjacent blocks and coalesce blocks as
 required. Note you don't need to walk the list as you do with
 `malloc().`
 
-
-## Blocks containing metadata
-
-For the purposes of my implementation a block is a lump that contains
-both the node and the memory that the requesting application will
-actually use for its own purposes.
-
-This is shown in a modified version of the first diagram:
-
-![Heap Memory Allocator with nodes in block](./images/Memory_allocator_2.png)
-
-Note that it is necessary to allocate larger than the requested memory
-size - that is, you need to allocate memory size plus node size.
-
-As you know the location of the node in memory (calculated from ptr
-passed to free(), or from walking the list during malloc()), you can
-simply add a constant to it (the node size) to find the start point of
-the actual allocation. However, a pointer to memory is stored in the
-node for convenience.
-
-Remember when implementing `free()` you would take the passed pointer
-and subtract the node size to get the start of the metadata.
 
 ## Wilderness
 
