@@ -2,7 +2,9 @@
 #include<stdlib.h>
 
 // a block is node + mem
-// wilderness managed separately
+// wilderness managed separately (this is nice because if this get low we can go
+// cap in hand to the system to extend)
+// grep TODO
 
 typedef unsigned char byte;
 typedef enum { false, true } bool;
