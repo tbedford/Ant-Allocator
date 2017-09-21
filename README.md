@@ -26,15 +26,13 @@ The following diagram shows this:
 
 ![Heap Memory Allocator](./images/Memory_allocator_1.png)
 
-Nodes are for managing blocks, blocks are the chunks of memory an app
-will actually use.
-
 TODO: I need to redo the diagrams:
 
-* Nodes - used for managing linked list
-* Mem - the memory the application will actually use
-* Heap - the data structure used to manage the whole thing
-* Block - The mem plus the node (containing the metadata)
+* Nodes - used for managing allocated blocks in a doubly linked-list.
+* Mem - the memory the application will actually use.
+* Heap - the data structure used to manage the whole thing.
+* Block - The mem plus the node (containing the metadata).
+* Wilderness - the big chunk of free memory after your allocated blocks (if any).
 
 The nodes contain a pointer to the mem, the size of the mem,
 whether the mem is used or not, and a couple of pointers to allow
@@ -45,14 +43,16 @@ allocate.
 
 A doubly-linked list seems a bit complex, but there are points where
 you will need to check the previous and next blocks to see if they are
-free and therefore can be coalesced with the current block. For
-example, if you have [free, used, free] blocks and then you free the
-used block you have [free, free, free]. These blocks can be coalesced
-into one free block.
+free and therefore can be coalesced with the current block. 
 
 Note that, in the diagram, a `free()` has meant that there are two
 contiguous free blocks (adjacent red blocks) that could be coalesced
 into one free block, thus helping to avoid memory fragmentation.
+
+As another example, if you have [free, used, free] blocks and then you
+free the used block you have [free, free, free]. These blocks can be
+coalesced into one free block. You would first coalesce the two on the
+left, and then coalesce that with the third block.
 
 TODO: look at when you find a block but it's a lot bigger than
 required, so you have to split the block.
@@ -69,7 +69,7 @@ There are other techniques such as binning where you try to keep small
 allocations in one area and larger allocations in another area. This
 way you will end up with small holes in the small allocation area,
 that are likely to be sufficient to service `malloc()` requests. You
-don't want the large allocation area ful of small holes. For example
+don't want the large allocation area full of small holes. For example
 you could end up with say 32KB total free, but only be able to service
 a `malloc()` of 4KB. Not good.
 
@@ -78,11 +78,6 @@ a `malloc()` of 4KB. Not good.
 In the above diagram, there is 70KB free on the heap. However, any
 allocation more than 10KB will fail. 
 
-## Implementation
-
-In a real implementation a node (metadata) will be part of a block,
-and not separate as there's no `malloc()` available to you to allocate
-for the node, because that's what you are implementing.
 
 ## Heap init
 
