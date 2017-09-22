@@ -24,6 +24,7 @@ typedef struct heap_s {
     size_t sysmem_sz; // size of memory grabbed from system 
     void *sysmem; // pointer to grabbed system memory
     void *wilderness; // will change
+    size_t wilderness_sz; // shrinks
 } heap_t;
 
 
@@ -36,6 +37,7 @@ void create_heap (heap_t *h, size_t s)
     h->tail = NULL;
 
     h->wilderness = h->sysmem; // wilderness size will change
+    h->wilderness_sz = h->sysmem_sz;
 }
 
 void destroy_heap(heap_t *h)
@@ -43,18 +45,24 @@ void destroy_heap(heap_t *h)
     free(h->sysmem);
 }
 
+// Allocate space from wilderness
 node_t * wild_alloc (heap_t *h, size_t mem_sz)
 {
-    // TODO add wilderness sufficient size check
-    printf("Allocating from wilderness.\n"); // debug
-    fflush(stdout);
     
-    size_t block_sz =  mem_sz + sizeof(node_t);
-    
-    void *w = h->wilderness;
-    h->wilderness = w + block_sz; // set new wilderness pointer
+    size_t block_sz =  mem_sz + sizeof(node_t); // total block size required
 
-    return w; // ptr to block
+    if (block_sz > h->wilderness_sz)
+    {
+        // TODO: improve this, such as expanding wilderness
+        printf("ERROR: wilderness exhausted.\n");
+        return NULL;
+    }
+    
+    void *p = h->wilderness;
+    h->wilderness = p + block_sz; // set new wilderness pointer
+    h->wilderness_sz = h->wilderness_sz - block_sz;
+    
+    return p; // ptr to block
 }
 
 // creating a new list node
@@ -62,6 +70,9 @@ node_t * wild_alloc (heap_t *h, size_t mem_sz)
 node_t *create_node (heap_t *h, size_t mem_sz)
 {
     node_t *n = wild_alloc (h, mem_sz);
+
+    if (n == NULL)
+        return NULL;
     
     n->id = 0x1D00D1; // for heap checking / testing  
     n->mem_sz = mem_sz;
@@ -98,12 +109,13 @@ bool check_mem_size (node_t *n, size_t s)
 
     if (n->mem_sz >= s)
     {
-        printf ("Block found!\n"); // Debug
-        return true;
+        if (n->free)
+        {
+            printf ("Block found!\n"); // Debug
+            return true;
+        }
     }
 
-    //printf ("No suitable block in block list.\n"); // Debug
-    //fflush(stdout);
     return false;
 }
 
@@ -150,6 +162,9 @@ void * ant_alloc (heap_t *h, size_t s)
     else // allocate from wilderness
     {
         node_t *n = create_node(h, s);
+
+        if (n == NULL)
+            return NULL;
         add_node(h, n);
         return n->mem;
     }
@@ -206,6 +221,12 @@ int main (int argc, char **argv)
     void *p3 = ant_alloc(&heap, 4000);
 
     dump_heap(&heap);
+    
+    void *p4 = ant_alloc(&heap, 4000);
+    if (p4 == NULL)
+    {
+        printf ("Allocation failed.\n");
+    }
     
     destroy_heap (&heap);
     
