@@ -203,19 +203,16 @@ void dump_heap (heap_t *h)
 
 }
 
-
-// Main
-
-int main (int argc, char **argv)
+// test wilderness exhaustion
+void test1 ()
 {
 
     heap_t heap;
     size_t heap_sz = 8000;
 
     create_heap(&heap, heap_sz); 
-
     dump_heap(&heap);
-    
+        
     void *p1 = ant_alloc(&heap, 1000);
     void *p2 = ant_alloc(&heap, 2000);
     void *p3 = ant_alloc(&heap, 4000);
@@ -227,8 +224,18 @@ int main (int argc, char **argv)
     {
         printf ("Allocation failed.\n");
     }
-    
+
     destroy_heap (&heap);
+}
+
+
+// Main
+
+int main (int argc, char **argv)
+{
+
+    test1();
     
     return 0;
 }
+
