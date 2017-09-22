@@ -57,7 +57,7 @@ node_t *create_node (heap_t *h, size_t mem_sz)
 {
     node_t *n = (node_t *) wild_alloc (h, mem_sz + sizeof(node_t));
     
-    n->id = 0x1D4A11; // for heap checking / testing  
+    n->id = 0x1D00D1; // for heap checking / testing  
     n->mem_sz = mem_sz;
     n->mem = (void *) n + sizeof(node_t);
     n->free = true;
@@ -68,7 +68,7 @@ node_t *create_node (heap_t *h, size_t mem_sz)
 }
 
 // add node to end of list
-void add_node (heap_t *h, node_t n)
+void add_node (heap_t *h, node_t *n)
 {
 
     if (h->head == NULL) // list is empty
@@ -87,18 +87,68 @@ void add_node (heap_t *h, node_t n)
 }
 
 
+bool check_mem_size (node_t *n, size_t s)
+{
+
+    if (n->mem_sz >= s)
+        return true;
+    return false;
+    
+}
+
+
 // find a node that had suitable memory available
 // s is mem_sz - that is user requested size
 // in the simple case we find first node with mem_sz > s
 // this is first fit. We then have the problem of what to do about
 // the wasted memory if mem_sz is a lot smaller than s
 // (turn it into a new free block)
-node_t * find_free_node (heap_t h, size_t s)
+// Returns NULL if no suitable block found. We then have to
+// make a new node from the wilderness chunk.
+node_t * find_free_node (heap_t *h, size_t s)
 {
-    // TODO
 
-    return NULL;
+    if (h->head == NULL) // empty list
+        return NULL;
+
+    node_t *rover = h->head;
+        
+    do {
+        // check block size
+        if (check_mem_size (rover, s))
+            return rover;
+        rover = rover->next;
+    }
+    while (rover != NULL); // end of list
+
+    return NULL; // No block found
 }
+
+void dump_heap (heap_t *h)
+{
+    if (h->head == NULL)
+    {
+        printf("Empty list.\n");
+
+    }
+    else
+    {
+        node_t *rover = h->head;
+        size_t i = 0;
+        
+        do {
+            printf ("ID: %d\n", (unsigned int)rover->id);
+            printf ("Mem_sz: %zu\n", rover->mem_sz);
+            rover = rover->next;
+            i++;
+        }
+        while (rover != NULL);
+
+        printf("%zu items in list.\n", i);
+    }
+
+}
+
 
 // return ptr to usable memory 
 void * ant_alloc (size_t mem_sz)
@@ -127,7 +177,8 @@ int main (int argc, char **argv)
     // do stuff
 
     void *mem = ant_alloc(1000);
-    
+
+    dump_heap(&heap);
     
     destroy_heap (&heap);
     
