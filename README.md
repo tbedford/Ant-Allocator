@@ -20,13 +20,13 @@ decided it was time to get back on the horse again so to speak.
 
 After struggling with pen and paper for a while, I realized that it
 helps to visualize the allocated memory (used and free) as separate from the
-nodes that manage the blocks memory.
+nodes that manage the blocks of memory.
 
 The following diagram shows this:
 
 ![Heap Memory Allocator](./images/Memory_allocator_1.png)
 
-TODO: I need to redo the diagrams:
+Basic definitions of things in my implementation:
 
 * Nodes - used for managing allocated blocks in a doubly linked-list.
 * Mem - the memory the application will actually use.
@@ -71,7 +71,7 @@ Note that it is necessary to allocate larger than the requested memory
 size - that is, you need to allocate memory size plus node size.
 
 As you know the location of the node in memory (calculated from ptr
-passed to free(), or from walking the list during malloc()), you can
+passed to free(), or from walking the list during `malloc()`), you can
 simply add a constant to it (the node size) to find the start point of
 the actual allocation. However, a pointer to memory is stored in the
 node for convenience.
@@ -100,7 +100,6 @@ a `malloc()` of 4KB. Not good.
 In the above diagram, there is 70KB free on the heap. However, any
 allocation more than 10KB will fail. 
 
-
 ## Heap init
 
 When you initialize the heap you will most likely call down into the
@@ -115,13 +114,13 @@ on. Making a system call every time would be horribly inefficient.
 
 However, there is one point at which you can get away with it and
 that's when your app or system starts. It makes a one-time call into
-the OS to grab a nice hunk of memory to manage as the
+the OS to grab a nice chunk of memory to manage as the
 heap. Potentially you could go back cap in hand to the OS at some
 point to expand the heap, but you really don't want to be doing that
 on every `malloc()`.
 
 You will need something to free up the main heap too, to return memory
-ultimately to the system.
+to the system.
 
 ## malloc()
 
@@ -130,7 +129,8 @@ free block of suitable size. Unless the free block was of exactly the
 right size, it would then be split into an allocated block and a new
 free block in the list (with its new metadata). This requires you
 insert a new node (a free block) into the linked-list. This is
-basically the "first fit" approach.
+basically the "first fit" approach. If you don't find a suitable block
+in the list, you can grab some of the wilderness and make one.
 
 TODO: other options / optimizations
 
@@ -153,23 +153,27 @@ required. Note you don't need to walk the list as you do with
 
 TODO: Add new diagram
 
-Wilderness is the term given to the block of free memory. At the
-start, when you initialize the heap, you have a list structure with
-head and tail pointing at NULL. You have no nodes in the system. But
-you have a big hunk of free memory you grabbed via a system call. This
-bit block of free memory is your 'wilderness'. What you could do is at
-the outset you make the wilderness a big free block with node data. So
-you start out with one big free block node - that is one item in the
-list. I did start to do this but decided to separate out the wilderness.
+Wilderness is the term given to the block of free memory as yet
+unallocated.
+
+At the start, when you initialize the heap, you have a list structure
+with head and tail both pointing at NULL. You have no nodes in the
+system. But you have a big chunk of free memory you grabbed via a
+system call. This big block of free memory is your 'wilderness'.
+
+What you could do is at the outset you make the wilderness a big free
+block with node data. So you start out with one big free block node -
+that is one item in the list. I did start to do this but decided to
+separate out the wilderness completely.
 
 So you have this big lump of free memory call the wilderness and no
 nodes in your list, and now you do a `malloc()`. What happens is is
 some memory to satisfty the `malloc()` request is grabbed from the
 wilderness to create the first node in the list. The wilderness
 pointer is adjusted so that the wilderness area is shrunk
-according. You now have one node in your list which is the first
-allocated block. You will make further allocations, shrinking the
-wilderness accordingly.
+accordingly. You now have one node in your list which is the first
+allocated block. You will make further allocations when free nodes
+aren't available, shrinking the wilderness accordingly.
 
 But then you want to free up an already allocated block. This
 operation would not affect the wilderness. What would happen is that

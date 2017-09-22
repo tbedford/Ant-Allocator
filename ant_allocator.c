@@ -43,9 +43,13 @@ void destroy_heap(heap_t *h)
     free(h->sysmem);
 }
 
-void * wild_alloc (heap_t *h, size_t block_sz)
+node_t * wild_alloc (heap_t *h, size_t mem_sz)
 {
     // TODO add wilderness sufficient size check
+    printf("Allocating from wilderness.\n"); // debug
+    fflush(stdout);
+    
+    size_t block_sz =  mem_sz + sizeof(node_t);
     
     void *w = h->wilderness;
     h->wilderness = w + block_sz; // set new wilderness pointer
@@ -57,12 +61,12 @@ void * wild_alloc (heap_t *h, size_t block_sz)
 // mem_sz is user requested mem size from ant_alloc()
 node_t *create_node (heap_t *h, size_t mem_sz)
 {
-    node_t *n = (node_t *) wild_alloc (h, mem_sz + sizeof(node_t));
+    node_t *n = wild_alloc (h, mem_sz);
     
     n->id = 0x1D00D1; // for heap checking / testing  
     n->mem_sz = mem_sz;
     n->mem = (void *) n + sizeof(node_t);
-    n->free = true;
+    n->free = false;
     n->next = NULL;
     n->prev = NULL;
 
@@ -93,9 +97,14 @@ bool check_mem_size (node_t *n, size_t s)
 {
 
     if (n->mem_sz >= s)
+    {
+        printf ("Block found!\n"); // Debug
         return true;
+    }
+
+    //printf ("No suitable block in block list.\n"); // Debug
+    //fflush(stdout);
     return false;
-    
 }
 
 
@@ -154,6 +163,8 @@ void ant_free (void *p)
 
 void dump_heap (heap_t *h)
 {
+    printf("Dump heap:\n");
+    
     if (h->head == NULL)
     {
         printf("Empty list.\n");
@@ -182,17 +193,14 @@ void dump_heap (heap_t *h)
 
 int main (int argc, char **argv)
 {
-    printf("Ant allocator!\n");
-    printf("Size of size_t %lu!\n", sizeof(size_t));
 
     heap_t heap;
     size_t heap_sz = 8000;
 
     create_heap(&heap, heap_sz); 
 
-
-    // do stuff
-
+    dump_heap(&heap);
+    
     void *p1 = ant_alloc(&heap, 1000);
     void *p2 = ant_alloc(&heap, 2000);
     void *p3 = ant_alloc(&heap, 4000);
