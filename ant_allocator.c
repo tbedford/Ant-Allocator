@@ -27,15 +27,15 @@ typedef struct heap_s {
 } heap_t;
 
 
-void * create_heap (heap_t *h, size_t s)
+void create_heap (heap_t *h, size_t s)
 {
-    h->sysmem = malloc(s);
+    h->sysmem = malloc(s); // replace by kernel system call
     h->sysmem_sz = s;
     
     h->head = NULL;
     h->tail = NULL;
 
-    return h->sysmem; // wilderness size will change
+    h->wilderness = h->sysmem; // wilderness size will change
 }
 
 void destroy_heap(heap_t *h)
@@ -98,6 +98,7 @@ bool check_mem_size (node_t *n, size_t s)
 
 
 // find a node that had suitable memory available
+// and return pointer to usable memory (not the node)
 // s is mem_sz - that is user requested size
 // in the simple case we find first node with mem_sz > s
 // this is first fit. We then have the problem of what to do about
@@ -105,24 +106,39 @@ bool check_mem_size (node_t *n, size_t s)
 // (turn it into a new free block)
 // Returns NULL if no suitable block found. We then have to
 // make a new node from the wilderness chunk.
-node_t * find_free_node (heap_t *h, size_t s)
+void * find_free_block (heap_t *h, size_t s)
 {
 
     if (h->head == NULL) // empty list
-        return NULL;
+        return NULL; // TODO: this would be an error!!!
 
     node_t *rover = h->head;
         
     do {
         // check block size
         if (check_mem_size (rover, s))
-            return rover;
+            return rover->mem;
         rover = rover->next;
     }
     while (rover != NULL); // end of list
 
+// TODO: Add code here to call out to wilderness handler if no block available
+// See wild_alloc()   
     return NULL; // No block found
 }
+
+// return ptr to usable memory
+// or NULL on failure to find block
+void * ant_alloc (heap_t *h, size_t s)
+{
+    return find_free_block(h, s);
+}
+
+void ant_free (void *p)
+{
+    // NOP
+}
+
 
 void dump_heap (heap_t *h)
 {
@@ -150,18 +166,7 @@ void dump_heap (heap_t *h)
 }
 
 
-// return ptr to usable memory 
-void * ant_alloc (size_t mem_sz)
-{
-    // TODO
-
-    return 0;
-}
-
-void ant_free (void *p)
-{
-    // NOP
-}
+// Main
 
 int main (int argc, char **argv)
 {
