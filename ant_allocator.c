@@ -43,10 +43,12 @@ void destroy_heap(heap_t *h)
     free(h->sysmem);
 }
 
-void * wild_alloc (heap_t *h, size_t s)
+void * wild_alloc (heap_t *h, size_t block_sz)
 {
+    // TODO add wilderness sufficient size check
+    
     void *w = h->wilderness;
-    h->wilderness = w + s; // set new wilderness pointer
+    h->wilderness = w + block_sz; // set new wilderness pointer
 
     return w; // ptr to block
 }
@@ -110,7 +112,7 @@ void * find_free_block (heap_t *h, size_t s)
 {
 
     if (h->head == NULL) // empty list
-        return NULL; // TODO: this would be an error!!!
+        return NULL; 
 
     node_t *rover = h->head;
         
@@ -122,8 +124,6 @@ void * find_free_block (heap_t *h, size_t s)
     }
     while (rover != NULL); // end of list
 
-// TODO: Add code here to call out to wilderness handler if no block available
-// See wild_alloc()   
     return NULL; // No block found
 }
 
@@ -131,7 +131,19 @@ void * find_free_block (heap_t *h, size_t s)
 // or NULL on failure to find block
 void * ant_alloc (heap_t *h, size_t s)
 {
-    return find_free_block(h, s);
+    void *p = NULL;
+    
+    p = find_free_block(h, s);
+    if (p != NULL)
+    {
+        return p;
+    }
+    else // allocate from wilderness
+    {
+        node_t *n = create_node(h, s);
+        add_node(h, n);
+        return n->mem;
+    }
 }
 
 void ant_free (void *p)
@@ -153,7 +165,7 @@ void dump_heap (heap_t *h)
         size_t i = 0;
         
         do {
-            printf ("ID: %d\n", (unsigned int)rover->id);
+            printf ("ID: %X\n", (unsigned int)rover->id);
             printf ("Mem_sz: %zu\n", rover->mem_sz);
             rover = rover->next;
             i++;
@@ -181,7 +193,9 @@ int main (int argc, char **argv)
 
     // do stuff
 
-    void *mem = ant_alloc(1000);
+    void *p1 = ant_alloc(&heap, 1000);
+    void *p2 = ant_alloc(&heap, 2000);
+    void *p3 = ant_alloc(&heap, 4000);
 
     dump_heap(&heap);
     
