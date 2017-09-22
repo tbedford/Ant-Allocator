@@ -1,10 +1,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 
-// a block is node + mem
-// wilderness managed separately (this is nice because if this get low we can go
-// cap in hand to the system to extend)
-// grep TODO
+#include "tests.h"
 
 typedef unsigned char byte;
 typedef enum { false, true } bool;
@@ -65,7 +62,7 @@ node_t * wild_alloc (heap_t *h, size_t mem_sz)
     return p; // ptr to block
 }
 
-// creating a new list node
+// creating a new list node from wilderness
 // mem_sz is user requested mem size from ant_alloc()
 node_t *create_node (heap_t *h, size_t mem_sz)
 {
@@ -103,7 +100,6 @@ void add_node (heap_t *h, node_t *n)
     
 }
 
-
 bool check_mem_size (node_t *n, size_t s)
 {
 
@@ -111,7 +107,7 @@ bool check_mem_size (node_t *n, size_t s)
     {
         if (n->free)
         {
-            printf ("Block found!\n"); // Debug
+            printf ("Free block found!\n"); // Debug
             return true;
         }
     }
@@ -120,16 +116,9 @@ bool check_mem_size (node_t *n, size_t s)
 }
 
 
-// find a node that had suitable memory available
-// and return pointer to usable memory (not the node)
-// s is mem_sz - that is user requested size
-// in the simple case we find first node with mem_sz > s
-// this is first fit. We then have the problem of what to do about
-// the wasted memory if mem_sz is a lot smaller than s
-// (turn it into a new free block)
-// Returns NULL if no suitable block found. We then have to
+// Returns NULL if no suitable free block found. We then have to
 // make a new node from the wilderness chunk.
-void * find_free_block (heap_t *h, size_t s)
+void * find_free_block (heap_t *h, size_t mem_sz)
 {
 
     if (h->head == NULL) // empty list
@@ -139,8 +128,10 @@ void * find_free_block (heap_t *h, size_t s)
         
     do {
         // check block size
-        if (check_mem_size (rover, s))
+        if (check_mem_size (rover, mem_sz))
+        {
             return rover->mem;
+        }
         rover = rover->next;
     }
     while (rover != NULL); // end of list
@@ -150,13 +141,16 @@ void * find_free_block (heap_t *h, size_t s)
 
 // return ptr to usable memory
 // or NULL on failure to find block
-void * ant_alloc (heap_t *h, size_t s)
+void * ant_malloc (heap_t *h, size_t s)
 {
     void *p = NULL;
-    
+
+    // try to reuse a block
     p = find_free_block(h, s);
     if (p != NULL)
     {
+        // split block
+        
         return p;
     }
     else // allocate from wilderness
@@ -170,8 +164,50 @@ void * ant_alloc (heap_t *h, size_t s)
     }
 }
 
+bool check_prev_free (node_t *n)
+{
+    node_t *p = n->prev;
+
+    if (p->free)
+        return true;
+    return false;
+}
+
+bool check_next_free (node_t *n)
+{
+    node_t *p = n->next;
+
+    if (p->free)
+        return true;
+    return false;
+}
+
+
+void coalesce_block ()
+{
+    // TODO
+}
+
+bool is_block_splittable (node_t *n)
+{
+    // TODO
+    
+    return false;
+}
+
+
+node_t * split_block (node_t *n)
+{
+    // TODO
+
+    return NULL;
+}
+
+
 void ant_free (void *p)
 {
+    // TODO coalesce blocks
+    
     node_t *n = p - sizeof(node_t);
     n->free = true;
 }
@@ -206,87 +242,12 @@ void dump_heap (heap_t *h)
 
 }
 
-// test wilderness exhaustion
-void test1 ()
-{
-
-    heap_t heap;
-    size_t heap_sz = 8000;
-
-    create_heap(&heap, heap_sz); 
-    dump_heap(&heap);
-        
-    void *p1 = ant_alloc(&heap, 1000);
-    void *p2 = ant_alloc(&heap, 2000);
-    void *p3 = ant_alloc(&heap, 4000);
-
-    dump_heap(&heap);
-    
-    void *p4 = ant_alloc(&heap, 4000);
-    if (p4 == NULL)
-    {
-        printf ("Allocation failed.\n");
-    }
-
-    dump_heap(&heap);
-
-    destroy_heap (&heap);
-}
-
-
-// check ant_free()
-void test2 ()
-{
-
-    heap_t heap;
-    size_t heap_sz = 8000;
-
-    create_heap(&heap, heap_sz); 
-         
-    void *p1 = ant_alloc(&heap, 1000);
-    void *p2 = ant_alloc(&heap, 2000);
-    void *p3 = ant_alloc(&heap, 3000);
-    void *p4 = ant_alloc(&heap, 1000);
-
-    ant_free(p2);
-    
-    dump_heap(&heap);
-    
-    destroy_heap (&heap);
-}
-
-// check free block resuse
-void test3 ()
-{
-
-    heap_t heap;
-    size_t heap_sz = 8000;
-
-    create_heap(&heap, heap_sz); 
-         
-    void *p1 = ant_alloc(&heap, 2000);
-    void *p2 = ant_alloc(&heap, 1000);
-    void *p3 = ant_alloc(&heap, 3000);
-
-    dump_heap(&heap);
-    
-    ant_free(p2);
-    
-    void *p4 = ant_alloc(&heap, 1000);
-
-    dump_heap(&heap);
-    
-    destroy_heap (&heap);
-}
 
 // Main
 
 int main (int argc, char **argv)
 {
 
-//    test1();
-//    test2();
-    test3();
 
     return 0;
 }

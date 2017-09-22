@@ -191,6 +191,14 @@ a preset size you can go back to the OS and ask for more memory to
 extend the wilderness. You would be performing essentially a system
 level `realloc()`. I plan on attempting to implement this feature.
 
+## Splitting block
+
+TODO need diagram
+
+## Coalescing blocks
+
+TODO need diagram
+
 ## Alignment
 
 TODO
