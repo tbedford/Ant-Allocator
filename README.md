@@ -191,9 +191,11 @@ a preset size you can go back to the OS and ask for more memory to
 extend the wilderness. You would be performing essentially a system
 level `realloc()`. I plan on attempting to implement this feature.
 
-## Splitting block
+## Splitting a block on `malloc()`
 
-Block splitting is required when you find a free block in the block list that is larger than required. This is show in the following diagram:
+Block splitting is required when you find a free block in the block
+list that is larger than required. This is shown in the following
+diagram:
 
 ![Block splitting](./images/Block_splitting.png)
 
