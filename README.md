@@ -151,10 +151,10 @@ required. Note you don't need to walk the list as you do with
 
 ## Wilderness
 
-TODO: Add new diagram
-
 Wilderness is the term given to the block of free memory as yet
 unallocated.
+
+![Wilderness](./images/Wilderness.png)
 
 At the start, when you initialize the heap, you have a list structure
 with head and tail both pointing at NULL. You have no nodes in the
