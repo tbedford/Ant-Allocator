@@ -193,7 +193,48 @@ level `realloc()`. I plan on attempting to implement this feature.
 
 ## Splitting block
 
-TODO need diagram
+Block splitting is required when you find a free block in the block list that is larger than required. This is show in the following diagram:
+
+![Block splitting](./images/Block_splitting.png)
+
+Here, block 2 is free, but bigger than required. The idea is to split
+this block into a used block and a new free block. Block 2 before the
+split can be thought of as consisting of space to be used, and the
+'left over' bit labelled as the 'fragment' here. There could be a
+potential problem here in that perhaps the fragment is not of a
+practical size. For example if your fragment is say eight bytes, and a
+block header (node) takes, say, eight bytes, that would not be a
+useful fragment. This can be solved by setting a constant, say,
+`MIN_FRAG` at a practical value, say 128 bytes, for example. If the
+frag size is less than this level then block splitting does not take
+place, and you have an allocated block that is slightly larger than
+asked for. It is important that the true size of the user memory is
+recorded, and not the requested size.
+
+While conceptually straightforward, the implementation of this can be
+a little tricky as it requires dealing with a tangle of pointers. The
+following diagram attempts to clarify this by showing only the block
+headers (nodes) involved:
+
+![Block splitting - nodes](./images/Block_splitting_nodes.png)
+
+
+So the pointers you will need to manipulate are shown in the following diagram:
+
+![Block splitting - pointers](./images/Block_splitting_pointers.png)
+
+Looking at pseudo-code for the split:
+
+1. P3 = P1->Next 
+2. P1->Next = P2 
+3. P2->Prev = P1
+4. P2->Next = P3
+5. P3->Prev = P2
+
+Sizes for user sizes also need to be set accordingly:
+
+![Block splitting - sizes](./images/Block_splitting_sizes.png)
+
 
 ## Coalescing blocks
 
