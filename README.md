@@ -237,6 +237,11 @@ Sizes for user sizes also need to be set accordingly:
 
 ![Block splitting - sizes](./images/Block_splitting_sizes.png)
 
+You need to calculate P2:
+
+```C
+P2 = P1 + sizeof (block_t) + user_mem_sz;
+```
 
 ## Coalescing blocks
 
