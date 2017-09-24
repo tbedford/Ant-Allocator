@@ -225,6 +225,12 @@ So the pointers you will need to manipulate are shown in the following diagram:
 
 ![Block splitting - pointers](./images/Block_splitting_pointers.png)
 
+You need to calculate P2 first:
+
+```C
+P2 = P1 + sizeof (block_t) + user_mem_sz;
+```
+
 Looking at pseudo-code for the split:
 
 1. P3 = P1->Next 
@@ -236,12 +242,6 @@ Looking at pseudo-code for the split:
 Sizes for user sizes also need to be set accordingly:
 
 ![Block splitting - sizes](./images/Block_splitting_sizes.png)
-
-You need to calculate P2:
-
-```C
-P2 = P1 + sizeof (block_t) + user_mem_sz;
-```
 
 ## Coalescing blocks
 
