@@ -166,8 +166,8 @@ void coalesce_block ()
 }
 
 
-// TODO ????
-// splits a free block into an allocated block and a new free block if possible
+// splits a free block into an allocated block
+// and a new free block if possible
 // adds new free block into list for us
 // if can't split block this does nothing
 // user_mem_sz is how much of the block we need, frag is the bit we don't

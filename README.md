@@ -7,6 +7,11 @@ A very, very simple memory allocator for educational purposes.
 Features:
 
 * Minimal design
+* Zoning possible
+* Block splitting
+* TODO: block coalescing
+* TODO: I have a wilderness but don't manage/extend it.
+* TODO: Binning / pre-allocation etc.
 * Err, that's about it!
 
 ## Background
