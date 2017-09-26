@@ -59,8 +59,6 @@ free the used block you have [free, free, free]. These blocks can be
 coalesced into one free block. You would first coalesce the two on the
 left, and then coalesce that with the third block.
 
-TODO: look at when you find a block but it's a lot bigger than
-required, so you have to split the block.
 
 ## Blocks containing metadata
 
@@ -104,6 +102,9 @@ a `malloc()` of 4KB. Not good.
 
 In the above diagram, there is 70KB free on the heap. However, any
 allocation more than 10KB will fail. 
+
+Note that fragmentation is particulalry an issue on _memory
+contrained_ systems, such as consoles and embedded systems.
 
 ## Heap init
 
@@ -256,17 +257,48 @@ TODO need diagram
 
 TODO
 
-## Sentinals
+## Sentinels
 
-TODO
+So far I only implemented a very simple sentinel. It's just a pattern
+that's easy to pick out in debug output. If the code doesn't look
+right I know something has gone horribly wrong.
+
+Upper sentinel to do.
 
 ## Testing
 
 TODO
+
+## Tips on writing your own
+
+1. It's not conceptually hard, it's the pointer manipulation that
+tends to be a pain.
+
+2. Draw things out on paper first. If you can't get what you want down
+on paper you probably won't be able to implement it.
+
+3. Diagrams help. Due to budget I only had Google Draw available
+(free). It might not look pretty but it does the job.
+
+4. Start with something really basic and build up. My initial free was
+a NOP. But I did destroy the whole heap and give memory back to the
+system when done.
+
+5. Get something to print the list and also check the sentinals fairly
+early on. (Before you do anything complicated.)
+
+6. Sometimes you will fell like giving up - don't!
+
+Good luck!
+
 
 ## References
 
 * [Jemalloc](https://linux.die.net/man/3/jemalloc)
 * [size_t](https://stackoverflow.com/questions/2550774/what-is-size-t-in-c#2550799)
 * [Fuschia/Magenta OS](https://github.com/fuchsia-mirror/magenta/blob/master/kernel/lib/heap/cmpctmalloc/cmpctmalloc.c)
+* http://allenchou.net/2013/05/memory-management-part-1-of-3-the-allocator/
+* https://systematicgaming.wordpress.com/2008/08/15/memory-management-consoles/
+* http://www.randygaul.net/2014/07/30/memory-management/
+
 

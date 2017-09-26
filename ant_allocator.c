@@ -4,76 +4,77 @@
 
 #define MIN_FRAG 128
 
-typedef unsigned char byte;
 typedef enum { false, true } bool;
 
-typedef struct block_s {
+typedef struct block_hdr_s {
     unsigned int id; // check for corruption
-    void *user_mem; // useable memory (NULL if free block)
-    size_t user_mem_sz; // size of usable memory 
-    struct block_s *next;
-    struct block_s *prev;
-} block_t;
+    size_t user_mem_sz; // size of usable memory
+    bool free; // true if free block
+    struct block_hdr_s *next;
+    struct block_hdr_s *prev;
+} block_hdr_t;
 
 
-typedef struct heap_s {
-    block_t *head; // points to start of whole heap (and first block in list)
-    block_t *tail; // last node in the list
-    size_t sys_mem_sz; // size of memory grabbed from system 
+typedef struct allocator_s {
+    block_hdr_t *head; // points to start of first block in list
+    block_hdr_t *tail; // last block in the list (before wilderness)
+    size_t sys_mem_sz; // size of memory grabbed from system
     void *sys_mem; // pointer to grabbed system memory
     void *wilderness; // will change
     size_t wilderness_sz; // shrinks
-} heap_t;
+} allocator_t;
 
+// GLOBAL
+size_t BLOCK_HDR_SZ;
 
-void create_heap (heap_t *h, size_t s)
+void allocator_create (allocator_t *alloc, size_t s)
 {
-    h->sys_mem = malloc(s); // replace by kernel system call
-    h->sys_mem_sz = s;
-    
-    h->head = NULL;
-    h->tail = NULL;
+    alloc->sys_mem = malloc(s); // replace by kernel system call
+    alloc->sys_mem_sz = s;
 
-    h->wilderness = h->sys_mem; // wilderness size will change
-    h->wilderness_sz = h->sys_mem_sz;
+    alloc->head = NULL;
+    alloc->tail = NULL;
+
+    alloc->wilderness = alloc->sys_mem; // wilderness size will change
+    alloc->wilderness_sz = alloc->sys_mem_sz;
 }
 
-void destroy_heap(heap_t *h)
+void allocator_destroy(allocator_t *alloc)
 {
-    free(h->sys_mem); // replace by system kernel call
+    free(alloc->sys_mem); // replace by system kernel call
 }
 
 // Allocate space from wilderness
-block_t * wild_alloc (heap_t *h, size_t user_mem_sz)
+block_hdr_t * wild_alloc (allocator_t *alloc, size_t user_mem_sz)
 {
-    
-    size_t block_sz =  user_mem_sz + sizeof(block_t); // total block size required
+    size_t block_sz =  user_mem_sz + BLOCK_HDR_SZ; // total block size required
 
-    if (block_sz > h->wilderness_sz)
+    if (block_sz > alloc->wilderness_sz)
     {
         printf("ERROR: wilderness exhausted.\n");
         return NULL;
     }
-    
-    void *p = h->wilderness;
-    h->wilderness = p + block_sz; // set new wilderness pointer
-    h->wilderness_sz = h->wilderness_sz - block_sz;
-    
-    return (block_t *)p; // ptr to block
+
+    void *p = alloc->wilderness;
+    alloc->wilderness = p + block_sz; // set new wilderness pointer
+    alloc->wilderness_sz = alloc->wilderness_sz - block_sz;
+
+    return (block_hdr_t *)p; // ptr to block
 }
 
 // creating a new block from wilderness
 // user_mem_sz is user requested mem size from ant_alloc()
-block_t *create_block (heap_t *h, size_t user_mem_sz)
+// Returns NULL if wild_alloc failed to provide
+block_hdr_t *create_block (allocator_t *alloc, size_t user_mem_sz)
 {
-    block_t *blk = wild_alloc (h, user_mem_sz);
+    block_hdr_t *blk = wild_alloc (alloc, user_mem_sz);
 
     if (blk == NULL)
         return NULL;
-    
-    blk->id = 0x1D00D1; // for heap checking / testing  
+
+    blk->id = 0x1D00D1; // for heap checking / testing
     blk->user_mem_sz = user_mem_sz;
-    blk->user_mem = (void *) blk + sizeof(block_t);
+    blk->free = false;
     blk->next = NULL;
     blk->prev = NULL;
 
@@ -81,56 +82,40 @@ block_t *create_block (heap_t *h, size_t user_mem_sz)
 }
 
 // add block to end of list
-void add_block (heap_t *h, block_t *blk)
+void add_block (allocator_t *alloc, block_hdr_t *blk)
 {
 
-    if (h->head == NULL) // list is empty
+    if (alloc->head == NULL) // list is empty
     {
-        h->head = blk;
-        h->tail = blk;
+        alloc->head = blk;
+        alloc->tail = blk;
     }
     else // add after tail
     {
-        blk->prev = h->tail;
+        blk->prev = alloc->tail;
         blk->next = NULL;
-        h->tail->next = blk;
-        h->tail = blk;
-    }
-    
-}
-
-bool check_mem_size (block_t *blk, size_t user_mem_sz)
-{
-
-    if (blk->user_mem_sz >= user_mem_sz)
-    {
-        if (blk->user_mem == NULL) // if free block
-        {
-            printf ("Free block found!\n"); // Debug only
-            return true;
-        }
+        alloc->tail->next = blk;
+        alloc->tail = blk;
     }
 
-    return false;
 }
-
 
 // Find a free block in the block list
 // Returns pointer to block or
 // Returns NULL if no suitable free block found.
 // If no block in block list we then have to
 // make a new block from the wilderness chunk.
-block_t * find_free_block (heap_t *h, size_t user_mem_sz)
+block_hdr_t * find_free_block (allocator_t *alloc, size_t user_mem_sz)
 {
 
-    if (h->head == NULL) // empty list
-        return NULL; 
+    if (alloc->head == NULL) // empty list
+        return NULL;
 
-    block_t *rover = h->head;
-        
+    block_hdr_t *rover = alloc->head;
+
     do {
-        // check block size
-        if (check_mem_size (rover, user_mem_sz))
+        // free block of sufficient size?
+        if (rover->free && (rover->user_mem_sz >= user_mem_sz))
         {
             return rover; // return pointer to *BLOCK*
         }
@@ -142,29 +127,6 @@ block_t * find_free_block (heap_t *h, size_t user_mem_sz)
 }
 
 
-bool check_prev_free (block_t *b)
-{
-    block_t *p = b->prev;
-
-    if (p->user_mem == NULL)
-        return true;
-    return false;
-}
-
-bool check_next_free (block_t *b)
-{
-    block_t *p = b->next;
-
-    if (p->user_mem == NULL)
-        return true;
-    return false;
-}
-
-void coalesce_block ()
-{
-    // TODO
-}
-
 
 // splits a free block into an allocated block
 // and a new free block if possible
@@ -172,25 +134,19 @@ void coalesce_block ()
 // if can't split block this does nothing
 // user_mem_sz is how much of the block we need, frag is the bit we don't
 // and which can be turned into a new free block if big enough.
-void split_block (block_t *blk, size_t user_mem_sz)
+void split_block (block_hdr_t *blk, size_t user_mem_sz)
 {
-    size_t block_sz = blk->user_mem_sz + sizeof(block_t);
-    size_t frag_sz = block_sz - user_mem_sz - sizeof(block_t);; 
-    
+    size_t block_sz = (blk->user_mem_sz) + BLOCK_HDR_SZ;
+    size_t frag_sz = block_sz - user_mem_sz - BLOCK_HDR_SZ;
+
+    printf("split_block():BLOCK_HDR_SZ: %lu\n", BLOCK_HDR_SZ);
+
     if (frag_sz > MIN_FRAG) // we can split block
     {
-        /*
-          See docs for description.
-          P3 = P1->Next
-          P1->Next = P2
-          P2->Prev = P1
-          P2->Next = P3
-          P3->Prev = P2
-        */
-
-        block_t *p1, *p2, *p3; // not really needed, but makes code more readable
+        printf("Splittable block.");
+        block_hdr_t *p1, *p2, *p3; // not really needed, but makes code more readable
         p1 = blk;
-        p2 = blk + sizeof(block_t) + user_mem_sz;
+        p2 = blk + BLOCK_HDR_SZ + user_mem_sz;
         p3 = blk->next;
 
         p1->next = p2;
@@ -199,67 +155,101 @@ void split_block (block_t *blk, size_t user_mem_sz)
         p3->prev = p2;
 
         // config rest of new block, p2
-        p2->user_mem_sz = frag_sz - sizeof(block_t);
-        p2->user_mem = NULL; // free block
+        p2->user_mem_sz = frag_sz - BLOCK_HDR_SZ;
+        p2->free = true; // free block
         p2->id = 0x1D00D1;
 
         // Adjust p1 (was free block, now used)
-        assert (user_mem_sz == (block_sz - sizeof(block_t) - frag_sz));
-        p1->user_mem_sz = block_sz - sizeof(block_t) - frag_sz;
-        p1->user_mem = p1 + sizeof(block_t);
+        assert (user_mem_sz == (block_sz - BLOCK_HDR_SZ - frag_sz));
+        p1->user_mem_sz = block_sz - BLOCK_HDR_SZ - frag_sz;
+        p1->free = false;
     }
 }
 
 
 // return ptr to user memory
 // or NULL on failure to find block
-void * ant_alloc (heap_t *h, size_t user_mem_sz)
+void * ant_alloc (allocator_t *alloc, size_t user_mem_sz)
 {
-    block_t *blk = NULL;
+    block_hdr_t *blk = NULL;
 
     // try to reuse a block
-    blk = find_free_block(h, user_mem_sz);
+    blk = find_free_block(alloc, user_mem_sz);
     if (blk != NULL) // we found a free block
     {
         // split block if possible
 
         split_block(blk, user_mem_sz);
-          
-        return blk->user_mem;
+
+        return blk + BLOCK_HDR_SZ;
     }
     else // allocate from wilderness
     {
-        blk = create_block(h, user_mem_sz);
+        blk = create_block(alloc, user_mem_sz);
 
         if (blk == NULL)
             return NULL; // alloc failed
-        add_block(h, blk);
-        return blk->user_mem;
+        printf("ant_alloc(): before add_block(): blk->Free: %d\n", blk->free);
+        add_block(alloc, blk);
+        printf("ant_alloc(): after add_block(): blk->Free: %d\n", blk->free);
+        return blk + BLOCK_HDR_SZ; // return user mem
     }
 }
+
+/*
+bool check_prev_free (block_hdr_t *b)
+{
+    block_hdr_t *p = b->prev;
+
+    if (p->free)
+        return true;
+    return false;
+}
+
+bool check_next_free (block_hdr_t *b)
+{
+    block_hdr_t *p = b->next;
+
+    if (p->free)
+        return true;
+    return false;
+}
+
+void coalesce_block ()
+{
+    // TODO
+}
+*/
 
 
 void ant_free (void *p)
 {
     // TODO coalesce blocks
-    
-    block_t *blk = p - sizeof(block_t);
-    blk->user_mem = NULL;
+    printf("ant_free(): p: %p\n", p);
+    // BUG FIXED: This was a nasty bug - you MUST cast p - the compiler will not warn you!
+    block_hdr_t *blk = (block_hdr_t *)p - BLOCK_HDR_SZ;
+    printf("ant_free(): blk: %p\n", blk);
+    printf("ant_free(): blk->id: %X\n", blk->id);
+    //blk->id = 0xAAAA;
+    printf("ant_free(): blk->Free: %d\n", blk->free);
+    blk->free = true;
+    printf("ant_free(): blk->Free: %d\n", blk->free);
+
 }
 
-void check_heap (heap_t *h)
+void check_heap (allocator_t *alloc)
 {
     printf("--- Check heap: ---\n");
-    
-    if (h->head == NULL)
+
+    if (alloc->head == NULL)
     {
         printf("Empty list.\n");
 
     }
     else
     {
-        block_t *rover = h->head;
-        
+        block_hdr_t *rover = alloc->head;
+
         do {
             if (rover->id != 0x1D00D1)
             {
@@ -272,24 +262,24 @@ void check_heap (heap_t *h)
 }
 
 
-void dump_heap (heap_t *h)
+void dump_heap (allocator_t *alloc)
 {
     printf("--- Dump heap: ---\n");
-    
-    if (h->head == NULL)
+
+    if (alloc->head == NULL)
     {
         printf("Empty list.\n");
 
     }
     else
     {
-        block_t *rover = h->head;
+        block_hdr_t *rover = alloc->head;
         size_t i = 0;
-        
+
         do {
-            printf ("ID: %X\n", (unsigned int)rover->id);
-            printf ("User Mem_sz: %zu\n", rover->user_mem_sz);
-            printf ("User Mem: %p\n", rover->user_mem);
+            // ID | User_mem_sz | User_mem_ptr | Free
+            //printf ("%X \t %zu \t %p \t %d\n", rover->id, rover->user_mem_sz, rover + BLOCK_HDR_SZ, rover->free);
+            printf ("%X \t %zu \t %d\n", rover->id, rover->user_mem_sz, rover->free);
             rover = rover->next;
             i++;
         }
@@ -305,28 +295,18 @@ void dump_heap (heap_t *h)
 int main (int argc, char **argv)
 {
 
-    heap_t heap;
+    BLOCK_HDR_SZ = sizeof(block_hdr_t);
+    allocator_t allocator;
     size_t heap_sz = 16000;
 
-    printf("Block_t size: %lu\n", sizeof(block_t));
-    
-    create_heap(&heap, heap_sz); 
-       
-    void *p1 = ant_alloc(&heap, 2000);
-    void *p2 = ant_alloc(&heap, 1000);
-    void *p3 = ant_alloc(&heap, 3000);
-
-    check_heap(&heap);
-    ant_free(p2);
-    
-    void *p4 = ant_alloc(&heap, 500);
- 
-      
-    dump_heap(&heap);
-    
-    check_heap(&heap);
-    destroy_heap (&heap);
-
+    allocator_create(&allocator, heap_sz);
+    void *p1 = ant_alloc(&allocator, 2000);
+    printf("P1: %p\n", p1);
+    dump_heap(&allocator);
+    ant_free (p1);
+    dump_heap(&allocator);
+    check_heap(&allocator);
+    allocator_destroy (&allocator);
 
     return 0;
 }
