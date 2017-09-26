@@ -139,8 +139,6 @@ void split_block (block_hdr_t *blk, size_t user_mem_sz)
     size_t block_sz = (blk->user_mem_sz) + BLOCK_HDR_SZ;
     size_t frag_sz = block_sz - user_mem_sz - BLOCK_HDR_SZ;
 
-    printf("split_block():BLOCK_HDR_SZ: %lu\n", BLOCK_HDR_SZ);
-
     if (frag_sz > MIN_FRAG) // we can split block
     {
         printf("Splittable block.");
@@ -189,9 +187,7 @@ void * ant_alloc (allocator_t *alloc, size_t user_mem_sz)
 
         if (blk == NULL)
             return NULL; // alloc failed
-        printf("ant_alloc(): before add_block(): blk->Free: %d\n", blk->free);
         add_block(alloc, blk);
-        printf("ant_alloc(): after add_block(): blk->Free: %d\n", blk->free);
         return blk + BLOCK_HDR_SZ; // return user mem
     }
 }
@@ -225,16 +221,10 @@ void coalesce_block ()
 void ant_free (void *p)
 {
     // TODO coalesce blocks
-    printf("ant_free(): p: %p\n", p);
-    // BUG FIXED: This was a nasty bug - you MUST cast p - the compiler will not warn you!
+    // BUG FIXED: This was a nasty bug -
+    // You MUST cast p - the compiler will not warn you!
     block_hdr_t *blk = (block_hdr_t *)p - BLOCK_HDR_SZ;
-    printf("ant_free(): blk: %p\n", blk);
-    printf("ant_free(): blk->id: %X\n", blk->id);
-    //blk->id = 0xAAAA;
-    printf("ant_free(): blk->Free: %d\n", blk->free);
     blk->free = true;
-    printf("ant_free(): blk->Free: %d\n", blk->free);
-
 }
 
 void check_heap (allocator_t *alloc)
@@ -278,8 +268,7 @@ void dump_heap (allocator_t *alloc)
 
         do {
             // ID | User_mem_sz | User_mem_ptr | Free
-            //printf ("%X \t %zu \t %p \t %d\n", rover->id, rover->user_mem_sz, rover + BLOCK_HDR_SZ, rover->free);
-            printf ("%X \t %zu \t %d\n", rover->id, rover->user_mem_sz, rover->free);
+            printf ("%X \t %zu \t %p \t %d\n", rover->id, rover->user_mem_sz, rover + BLOCK_HDR_SZ, rover->free);
             rover = rover->next;
             i++;
         }
@@ -301,9 +290,14 @@ int main (int argc, char **argv)
 
     allocator_create(&allocator, heap_sz);
     void *p1 = ant_alloc(&allocator, 2000);
-    printf("P1: %p\n", p1);
-    dump_heap(&allocator);
-    ant_free (p1);
+    void *p2 = ant_alloc(&allocator, 1000);
+    void *p3 = ant_alloc(&allocator, 3000);
+    
+    ant_free (p2);
+
+    void *p4 = ant_alloc(&allocator, 500);
+
+
     dump_heap(&allocator);
     check_heap(&allocator);
     allocator_destroy (&allocator);
