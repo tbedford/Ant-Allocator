@@ -1,13 +1,13 @@
 # Ant-Allocator
 
-*Currently under construction.*
+*Currently under construction (but should compile and run).*
 
 A simple memory allocator for educational purposes.
 
 Features:
 
 * Minimal design
-* Zoning possible
+* Zoning possible (multiple allocators)
 * Block splitting
 * Block coalescing
 * TODO: Redo diagrams
@@ -59,7 +59,6 @@ As another example, if you have [free, used, free] blocks and then you
 free the used block you have [free, free, free]. These blocks can be
 coalesced into one free block. You would first coalesce the two on the
 left, and then coalesce that with the third block.
-
 
 ## Blocks containing metadata
 
@@ -144,7 +143,6 @@ insert a new node (a free block) into the linked-list. This is
 basically the "first fit" approach. If you don't find a suitable block
 in the list, you can grab some of the wilderness and make one.
 
-TODO: other options / optimizations
 
 ## free()
 
@@ -353,7 +351,8 @@ TODO
 ## Tips on writing your own
 
 1. It's not conceptually hard, it's the pointer manipulation that
-tends to be a pain.
+tends to be a pain, and the special cases, like for blocks that are
+head or tail of list (watch out for those).
 
 2. Draw things out on paper first. If you can't get what you want down
 on paper you probably won't be able to implement it.
