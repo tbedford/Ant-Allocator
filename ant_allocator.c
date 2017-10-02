@@ -25,7 +25,7 @@ typedef struct allocator_s {
 } allocator_t;
 
 // GLOBAL
-size_t BLOCK_HDR_SZ;
+size_t BLOCK_HDR_SZ;// Not ideal - but otherwise multiple calls to sizeof()
 
 void allocator_create (allocator_t *alloc, size_t s)
 {
@@ -141,7 +141,6 @@ void split_block (block_hdr_t *blk, size_t user_mem_sz)
 
     if (frag_sz > MIN_FRAG) // we can split block
     {
-        printf("Splittable block.");
         block_hdr_t *p1, *p2, *p3; // not really needed, but makes code more readable
         p1 = blk;
         p2 = blk + BLOCK_HDR_SZ + user_mem_sz;
@@ -167,6 +166,7 @@ void split_block (block_hdr_t *blk, size_t user_mem_sz)
 
 // return ptr to user memory
 // or NULL on failure to find block
+// TODO: add fprintf(stderr) tracing (silly because fprintf uses malloc()!)
 void * ant_alloc (allocator_t *alloc, size_t user_mem_sz)
 {
     block_hdr_t *blk = NULL;
@@ -210,21 +210,46 @@ bool check_next_free (block_hdr_t *b)
         return true;
     return false;
 }
-
-void coalesce_block ()
-{
-    // TODO
-}
 */
 
 
+// p2 is right-hand of two blocks, it will
+// coalesce with the block on the left, p1
+void coalesce_blocks (block_hdr_t * p2)
+{
+    block_hdr_t *p1 = p2->prev; // set left-hand block
+    size_t bs1, bs2, new_block_sz;
+
+    bs1 = (p1->user_mem_sz) + BLOCK_HDR_SZ;
+    bs2 = (p2->user_mem_sz) + BLOCK_HDR_SZ;
+    new_block_sz = bs1 + bs2;
+
+    // coalesce left and right blocks
+    p1->next = p2->next;
+    p2->next->prev = p1;
+
+    p1->user_mem_sz = new_block_sz - BLOCK_HDR_SZ;
+}
+
 void ant_free (void *p)
 {
-    // TODO coalesce blocks
-    // BUG FIXED: This was a nasty bug -
-    // You MUST cast p - the compiler will not warn you!
+    // !!! BUG FIXED !!! This was a nasty bug -
+    // You MUST cast p - the compiler will not warn you, at least
+    // with default switches!
     block_hdr_t *blk = (block_hdr_t *)p - BLOCK_HDR_SZ;
     blk->free = true;
+
+    // coalesce free blocks if possible
+    // check left-hand block 
+    if (blk->prev->free == true)
+    {
+        coalesce_blocks(blk);
+    }
+    // check right-hand block
+    if (blk->next->free == true)
+    {
+        coalesce_blocks(blk->next); // always pass right hand block
+    }
 }
 
 void check_heap (allocator_t *alloc)
@@ -284,6 +309,8 @@ void dump_heap (allocator_t *alloc)
 int main (int argc, char **argv)
 {
 
+    printf ("FILE:%s LINE:%d\n", __FILE__, __LINE__);
+    
     BLOCK_HDR_SZ = sizeof(block_hdr_t);
     allocator_t allocator;
     size_t heap_sz = 16000;

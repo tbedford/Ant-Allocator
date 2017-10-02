@@ -103,8 +103,13 @@ a `malloc()` of 4KB. Not good.
 In the above diagram, there is 70KB free on the heap. However, any
 allocation more than 10KB will fail. 
 
-Note that fragmentation is particulalry an issue on _memory
-contrained_ systems, such as consoles and embedded systems.
+Note that fragmentation is particularly an issue on _memory
+contrained_ systems, such as consoles and embedded systems. For
+example, the latest Kindle Fire has 1GB of RAM, the first generation
+had 512MB. If your life span stretches back to Net Yaroze that was a
+66Mhz CPU with 4MB RAM topped off with a 10MB hard drive! Note that is
+4MB NOT 4GB! Oh how lucky you are with your fancy i7 and 20GB RAM!
+:wink:
 
 ## Heap init
 
@@ -249,6 +254,14 @@ Sizes for user sizes also need to be set accordingly:
 
 ![Block splitting - sizes](./images/Block_splitting_sizes.png)
 
+One issue with block splitting is it can create *internal memory
+fragmentation*. This is because if the fragment is not big enough to
+be useable, we will have a block that has allocated more memory than
+was asked for. This means it's important to select MIN_FRAG carefully.
+If a system does a lot of small allocations MIN_FRAG could be reduced
+from 128 to say 64. Another option might be to have a custom allocator
+just for small allocation, such as those for small strings.
+
 ## Coalescing blocks
 
 TODO need diagram
@@ -297,8 +310,12 @@ Good luck!
 * [Jemalloc](https://linux.die.net/man/3/jemalloc)
 * [size_t](https://stackoverflow.com/questions/2550774/what-is-size-t-in-c#2550799)
 * [Fuschia/Magenta OS](https://github.com/fuchsia-mirror/magenta/blob/master/kernel/lib/heap/cmpctmalloc/cmpctmalloc.c)
-* http://allenchou.net/2013/05/memory-management-part-1-of-3-the-allocator/
-* https://systematicgaming.wordpress.com/2008/08/15/memory-management-consoles/
-* http://www.randygaul.net/2014/07/30/memory-management/
-
+* [Series on memory allocators](http://allenchou.net/2013/05/memory-management-part-1-of-3-the-allocator/)
+* [Memory management on games consoles](https://systematicgaming.wordpress.com/2008/08/15/memory-management-consoles/)
+* [Memory management](http://www.randygaul.net/2014/07/30/memory-management/)
+* [std::allocator talk by Andrei Alexandrescu](https://www.youtube.com/watch?v=LIb3L4vKZ7U)
+* [N3536 problem with binning memory allocators](http://www.open-std.org/JTC1/SC22/WG21/docs/papers/2013/n3536.html#Problem)
+* [Linux Memory Management](https://linux-mm.org)
+* [OOM Killer](https://linux-mm.org/OOM_Killer)
+* [Debug Malloc()](http://dmalloc.com)
 
