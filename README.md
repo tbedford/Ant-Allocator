@@ -1,15 +1,15 @@
 # Ant-Allocator
 
-*Currently under heavy construction.*
+*Currently under construction.*
 
-A very, very simple memory allocator for educational purposes.
+A simple memory allocator for educational purposes.
 
 Features:
 
 * Minimal design
 * Zoning possible
 * Block splitting
-* TODO: block coalescing
+* Block coalescing
 * TODO: I have a wilderness but don't manage/extend it.
 * TODO: Binning / pre-allocation etc.
 * Err, that's about it!
@@ -24,8 +24,8 @@ decided it was time to get back on the horse again so to speak.
 ## Overview
 
 After struggling with pen and paper for a while, I realized that it
-helps to visualize the allocated memory (used and free) as separate from the
-nodes that manage the blocks of memory.
+helps to visualize the allocated memory (used and free) as separate
+from the nodes that manage the blocks of memory.
 
 The following diagram shows this:
 
@@ -264,7 +264,51 @@ just for small allocation, such as those for small strings.
 
 ## Coalescing blocks
 
-TODO need diagram
+The idea is that when you free a block you check its neighbours to see
+if they are also free. If either of the blocks are free then they are
+coalesced to create one larger free block. This helps prevent memory
+fragmentation - we want to avoid the situation where we have enough
+free space to make an allocation, but because there are, say, three
+free separate blocks rather than one larger block.
+
+I treat block coalescing as a two block operation. The function that
+coalesces two blocks always receives the pointer to the right-hand
+block. This allows us to handle a free block with free left-hand
+neighbour and free right-hand neighbour with the same code.
+
+So the process is, given any right-hand block (which has been
+pre-checked as free):
+
+1. Check left block is free. If so coalesce two blocks.
+
+This has to be done twice because the block you free may have a free
+block on either side, or both sides. So the procedure is:
+
+1. Given a block, check it's left hand neighbour.
+2. Check its right-hand neighbour.
+
+This sounds complicated but the code is surprisingly simple:
+
+``` C
+// p2 is right-hand of two blocks, it will
+// coalesce with the block on the left, p1
+void coalesce_blocks (block_hdr_t * p2)
+{
+    block_hdr_t *p1 = p2->prev; // set left-hand block
+    size_t bs1, bs2, new_block_sz;
+
+    bs1 = (p1->user_mem_sz) + BLOCK_HDR_SZ;
+    bs2 = (p2->user_mem_sz) + BLOCK_HDR_SZ;
+    new_block_sz = bs1 + bs2;
+
+    // coalesce left and right blocks
+    p1->next = p2->next;
+    p2->next->prev = p1;
+
+    p1->user_mem_sz = new_block_sz - BLOCK_HDR_SZ;
+}
+```
+
 
 ## Alignment
 
