@@ -2,7 +2,7 @@
 #include<stdlib.h>
 #include<assert.h>
 
-#define MIN_FRAG 128
+#define MIN_FRAG 64 // bytes, block overhead is 40 bytes
 
 typedef enum { false, true } bool;
 
@@ -47,6 +47,7 @@ void allocator_destroy(allocator_t *alloc)
 // Allocate space from wilderness
 block_hdr_t * wild_alloc (allocator_t *alloc, size_t user_mem_sz)
 {
+    printf("Wild alloc.\n");
     size_t block_sz =  user_mem_sz + BLOCK_HDR_SZ; // total block size required
 
     if (block_sz > alloc->wilderness_sz)
@@ -107,7 +108,7 @@ void add_block (allocator_t *alloc, block_hdr_t *blk)
 // make a new block from the wilderness chunk.
 block_hdr_t * find_free_block (allocator_t *alloc, size_t user_mem_sz)
 {
-
+    printf ("Find free block.\n");
     if (alloc->head == NULL) // empty list
         return NULL;
 
@@ -117,6 +118,7 @@ block_hdr_t * find_free_block (allocator_t *alloc, size_t user_mem_sz)
         // free block of sufficient size?
         if (rover->free && (rover->user_mem_sz >= user_mem_sz))
         {
+            printf("Free block found.\n");
             return rover; // return pointer to *BLOCK*
         }
         rover = rover->next;
@@ -134,8 +136,9 @@ block_hdr_t * find_free_block (allocator_t *alloc, size_t user_mem_sz)
 // if can't split block this does nothing
 // user_mem_sz is how much of the block we need, frag is the bit we don't
 // and which can be turned into a new free block if big enough.
-void split_block (block_hdr_t *blk, size_t user_mem_sz)
+void split_block (allocator_t *alloc, block_hdr_t *blk, size_t user_mem_sz)
 {
+    printf("split block.\n");
     size_t block_sz = (blk->user_mem_sz) + BLOCK_HDR_SZ;
     size_t frag_sz = block_sz - user_mem_sz - BLOCK_HDR_SZ;
 
@@ -149,8 +152,18 @@ void split_block (block_hdr_t *blk, size_t user_mem_sz)
         p1->next = p2;
         p2->prev = p1;
         p2->next = p3;
-        p3->prev = p2;
 
+        // If the block we are splitting is last block in list
+        // there is no p3
+        if (p3 != NULL) 
+        {
+            p3->prev = p2;
+        }
+        else // p2 is new tail of list
+        {
+            alloc->tail = p2; 
+        }
+            
         // config rest of new block, p2
         p2->user_mem_sz = frag_sz - BLOCK_HDR_SZ;
         p2->free = true; // free block
@@ -177,7 +190,7 @@ void * ant_alloc (allocator_t *alloc, size_t user_mem_sz)
     {
         // split block if possible
 
-        split_block(blk, user_mem_sz);
+        split_block(alloc, blk, user_mem_sz);
 
         return blk + BLOCK_HDR_SZ;
     }
@@ -192,32 +205,14 @@ void * ant_alloc (allocator_t *alloc, size_t user_mem_sz)
     }
 }
 
-/*
-bool check_prev_free (block_hdr_t *b)
-{
-    block_hdr_t *p = b->prev;
-
-    if (p->free)
-        return true;
-    return false;
-}
-
-bool check_next_free (block_hdr_t *b)
-{
-    block_hdr_t *p = b->next;
-
-    if (p->free)
-        return true;
-    return false;
-}
-*/
-
-
 // p2 is right-hand of two blocks, it will
 // coalesce with the block on the left, p1
-void coalesce_blocks (block_hdr_t * p2)
+void coalesce_blocks (allocator_t *alloc, block_hdr_t *p2)
 {
+    printf("Enter Coalesce blocks.\n");
     block_hdr_t *p1 = p2->prev; // set left-hand block
+    block_hdr_t *p3 = p2->next; // set after block
+
     size_t bs1, bs2, new_block_sz;
 
     bs1 = (p1->user_mem_sz) + BLOCK_HDR_SZ;
@@ -225,30 +220,54 @@ void coalesce_blocks (block_hdr_t * p2)
     new_block_sz = bs1 + bs2;
 
     // coalesce left and right blocks
-    p1->next = p2->next;
-    p2->next->prev = p1;
+    p1->next = p3;
 
+    // if not end of list
+    if (p3 != NULL)
+    {
+        p3->prev = p1;
+    }
+    else // p1 is new tail of list
+    {
+        alloc->tail = p1;
+    }
+    
+    // set new size of block
     p1->user_mem_sz = new_block_sz - BLOCK_HDR_SZ;
+    printf("Exit Coalesce blocks.\n");
 }
 
-void ant_free (void *p)
+void ant_free (allocator_t *alloc, void *p)
 {
-    // !!! BUG FIXED !!! This was a nasty bug -
+    printf("ant_free(): Free %p\n", p);
     // You MUST cast p - the compiler will not warn you, at least
     // with default switches!
     block_hdr_t *blk = (block_hdr_t *)p - BLOCK_HDR_SZ;
     blk->free = true;
 
+    // the block pointed to by blk may get coalesced, so save
+    // ptr to block after
+    block_hdr_t *p3 = blk->next;
+    
     // coalesce free blocks if possible
-    // check left-hand block 
-    if (blk->prev->free == true)
+    // check left-hand block
+    if (blk->prev != NULL) // if first block in list no prev
     {
-        coalesce_blocks(blk);
+        if (blk->prev->free == true)
+        {
+            printf("Coalesce left hand block.\n");
+            coalesce_blocks(alloc, blk);
+        
+        }
     }
     // check right-hand block
-    if (blk->next->free == true)
+    if (p3 != NULL) // check there is actually a block
     {
-        coalesce_blocks(blk->next); // always pass right hand block
+        if (p3->free == true) // and it's free
+        {
+            printf("Coalesce right hand block.\n");
+            coalesce_blocks(alloc, p3); // always pass right hand block
+        }
     }
 }
 
@@ -274,6 +293,8 @@ void check_heap (allocator_t *alloc)
         }
         while (rover != NULL);
     }
+
+    printf("--- Check Heap: Done ---\n");
 }
 
 
@@ -308,7 +329,6 @@ void dump_heap (allocator_t *alloc)
 
 int main (int argc, char **argv)
 {
-
     printf ("FILE:%s LINE:%d\n", __FILE__, __LINE__);
     
     BLOCK_HDR_SZ = sizeof(block_hdr_t);
@@ -316,15 +336,23 @@ int main (int argc, char **argv)
     size_t heap_sz = 16000;
 
     allocator_create(&allocator, heap_sz);
+
     void *p1 = ant_alloc(&allocator, 2000);
     void *p2 = ant_alloc(&allocator, 1000);
     void *p3 = ant_alloc(&allocator, 3000);
     
-    ant_free (p2);
+    ant_free (&allocator, p2);
 
     void *p4 = ant_alloc(&allocator, 500);
 
+    ant_free(&allocator, p3);
 
+    void *p5 = ant_alloc(&allocator, 1500);
+
+    ant_free(&allocator, p1);
+
+    void *p6 = ant_alloc(&allocator, 1000);
+    
     dump_heap(&allocator);
     check_heap(&allocator);
     allocator_destroy (&allocator);

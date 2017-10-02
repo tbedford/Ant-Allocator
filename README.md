@@ -10,7 +10,8 @@ Features:
 * Zoning possible
 * Block splitting
 * Block coalescing
-* TODO: I have a wilderness but don't manage/extend it.
+* TODO: Redo diagrams
+* TODO: I have a wilderness but don't extend it on exhaustion.
 * TODO: Binning / pre-allocation etc.
 * Err, that's about it!
 
@@ -248,7 +249,7 @@ Looking at pseudo-code for the split:
 2. P1->Next = P2 
 3. P2->Prev = P1
 4. P2->Next = P3
-5. P3->Prev = P2
+5. P3->Prev = P2 // unless p3 does not exist
 
 Sizes for user sizes also need to be set accordingly:
 
@@ -261,6 +262,11 @@ was asked for. This means it's important to select MIN_FRAG carefully.
 If a system does a lot of small allocations MIN_FRAG could be reduced
 from 128 to say 64. Another option might be to have a custom allocator
 just for small allocation, such as those for small strings.
+
+There's an annoying complication you have to deal with, and that's the
+case where the block you are splitting is the last block on the list -
+there's no block after it, so you need to allow for that in your
+pointer code. See the source code for details.
 
 ## Coalescing blocks
 
@@ -292,9 +298,12 @@ This sounds complicated but the code is surprisingly simple:
 ``` C
 // p2 is right-hand of two blocks, it will
 // coalesce with the block on the left, p1
-void coalesce_blocks (block_hdr_t * p2)
+void coalesce_blocks (allocator_t *alloc, block_hdr_t *p2)
 {
+    printf("Enter Coalesce blocks.\n");
     block_hdr_t *p1 = p2->prev; // set left-hand block
+    block_hdr_t *p3 = p2->next; // set after block
+
     size_t bs1, bs2, new_block_sz;
 
     bs1 = (p1->user_mem_sz) + BLOCK_HDR_SZ;
@@ -302,13 +311,28 @@ void coalesce_blocks (block_hdr_t * p2)
     new_block_sz = bs1 + bs2;
 
     // coalesce left and right blocks
-    p1->next = p2->next;
-    p2->next->prev = p1;
+    p1->next = p3;
 
+    // if not end of list
+    if (p3 != NULL)
+    {
+        p3->prev = p1;
+    }
+    else // p1 is new tail of list
+    {
+        alloc->tail = p1;
+    }
+    
+    // set new size of block
     p1->user_mem_sz = new_block_sz - BLOCK_HDR_SZ;
+    printf("Exit Coalesce blocks.\n");
 }
 ```
 
+There's a slight complication in that if you the block you are working
+with is the last in the list there is no block after it, so the code
+needs to deal with that. It's an annoying complication, but there's
+nothing for it, you have to deal with it.
 
 ## Alignment
 
@@ -344,7 +368,7 @@ system when done.
 5. Get something to print the list and also check the sentinals fairly
 early on. (Before you do anything complicated.)
 
-6. Sometimes you will fell like giving up - don't!
+6. Sometimes you will feel like giving up - don't!
 
 Good luck!
 
