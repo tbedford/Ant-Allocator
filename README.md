@@ -345,7 +345,22 @@ Upper sentinel to do.
 
 ## Testing
 
-TODO
+To build you do the following:
+
+``` Bash
+clang -c ant_allocator.c 
+clang -c main.c
+clang main.o ant_allocator.o -o test
+```
+
+You can then run the test program by typing the following:
+
+``` Bash
+./test
+```
+
+
+
 
 ## Tips on writing your own
 

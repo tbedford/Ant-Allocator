@@ -2,30 +2,7 @@
 #include<stdlib.h>
 #include<assert.h>
 
-#define MIN_FRAG 64 // bytes, block overhead is 40 bytes
-
-typedef enum { false, true } bool;
-
-typedef struct block_hdr_s {
-    unsigned int id; // check for corruption
-    size_t user_mem_sz; // size of usable memory
-    bool free; // true if free block
-    struct block_hdr_s *next;
-    struct block_hdr_s *prev;
-} block_hdr_t;
-
-
-typedef struct allocator_s {
-    block_hdr_t *head; // points to start of first block in list
-    block_hdr_t *tail; // last block in the list (before wilderness)
-    size_t sys_mem_sz; // size of memory grabbed from system
-    void *sys_mem; // pointer to grabbed system memory
-    void *wilderness; // will change
-    size_t wilderness_sz; // shrinks
-} allocator_t;
-
-// GLOBAL
-size_t BLOCK_HDR_SZ;// Not ideal - but otherwise multiple calls to sizeof()
+#include "ant_allocator.h"
 
 void allocator_create (allocator_t *alloc, size_t s)
 {
@@ -47,7 +24,6 @@ void allocator_destroy(allocator_t *alloc)
 // Allocate space from wilderness
 block_hdr_t * wild_alloc (allocator_t *alloc, size_t user_mem_sz)
 {
-    printf("Wild alloc.\n");
     size_t block_sz =  user_mem_sz + BLOCK_HDR_SZ; // total block size required
 
     if (block_sz > alloc->wilderness_sz)
@@ -108,7 +84,6 @@ void add_block (allocator_t *alloc, block_hdr_t *blk)
 // make a new block from the wilderness chunk.
 block_hdr_t * find_free_block (allocator_t *alloc, size_t user_mem_sz)
 {
-    printf ("Find free block.\n");
     if (alloc->head == NULL) // empty list
         return NULL;
 
@@ -118,7 +93,6 @@ block_hdr_t * find_free_block (allocator_t *alloc, size_t user_mem_sz)
         // free block of sufficient size?
         if (rover->free && (rover->user_mem_sz >= user_mem_sz))
         {
-            printf("Free block found.\n");
             return rover; // return pointer to *BLOCK*
         }
         rover = rover->next;
@@ -138,7 +112,6 @@ block_hdr_t * find_free_block (allocator_t *alloc, size_t user_mem_sz)
 // and which can be turned into a new free block if big enough.
 void split_block (allocator_t *alloc, block_hdr_t *blk, size_t user_mem_sz)
 {
-    printf("split block.\n");
     size_t block_sz = (blk->user_mem_sz) + BLOCK_HDR_SZ;
     size_t frag_sz = block_sz - user_mem_sz - BLOCK_HDR_SZ;
 
@@ -209,7 +182,6 @@ void * ant_alloc (allocator_t *alloc, size_t user_mem_sz)
 // coalesce with the block on the left, p1
 void coalesce_blocks (allocator_t *alloc, block_hdr_t *p2)
 {
-    printf("Enter Coalesce blocks.\n");
     block_hdr_t *p1 = p2->prev; // set left-hand block
     block_hdr_t *p3 = p2->next; // set after block
 
@@ -234,12 +206,10 @@ void coalesce_blocks (allocator_t *alloc, block_hdr_t *p2)
     
     // set new size of block
     p1->user_mem_sz = new_block_sz - BLOCK_HDR_SZ;
-    printf("Exit Coalesce blocks.\n");
 }
 
 void ant_free (allocator_t *alloc, void *p)
 {
-    printf("ant_free(): Free %p\n", p);
     // You MUST cast p - the compiler will not warn you, at least
     // with default switches!
     block_hdr_t *blk = (block_hdr_t *)p - BLOCK_HDR_SZ;
@@ -265,7 +235,6 @@ void ant_free (allocator_t *alloc, void *p)
     {
         if (p3->free == true) // and it's free
         {
-            printf("Coalesce right hand block.\n");
             coalesce_blocks(alloc, p3); // always pass right hand block
         }
     }
@@ -273,7 +242,7 @@ void ant_free (allocator_t *alloc, void *p)
 
 void check_heap (allocator_t *alloc)
 {
-    printf("--- Check heap: ---\n");
+    printf("--- Checking heap: ---\n");
 
     if (alloc->head == NULL)
     {
@@ -294,7 +263,7 @@ void check_heap (allocator_t *alloc)
         while (rover != NULL);
     }
 
-    printf("--- Check Heap: Done ---\n");
+    printf("--- Checking heap: Done ---\n");
 }
 
 
@@ -324,44 +293,4 @@ void dump_heap (allocator_t *alloc)
     }
 }
 
-
-// Main
-
-int main (int argc, char **argv)
-{
-    printf ("FILE:%s LINE:%d\n", __FILE__, __LINE__);
-    
-    BLOCK_HDR_SZ = sizeof(block_hdr_t);
-    allocator_t alloc;
-    size_t heap_sz = 16000;
-
-    allocator_create(&alloc, heap_sz);
-
-    void *p1 = ant_alloc(&alloc, 2000);
-    void *p2 = ant_alloc(&alloc, 1000);
-    void *p3 = ant_alloc(&alloc, 3000);
-    
-    ant_free (&alloc, p2);
-
-    void *p4 = ant_alloc(&alloc, 500);
-
-    ant_free(&alloc, p3);
-
-    void *p5 = ant_alloc(&alloc, 1500);
-
-    ant_free(&alloc, p1);
-
-    void *p6 = ant_alloc(&alloc, 1000);
-
-    dump_heap(&alloc);
-    
-    void *p7 = ant_alloc(&alloc, 4000);
-    ant_free (&alloc, p7);
-    
-    dump_heap(&alloc);
-    check_heap(&alloc);
-    allocator_destroy (&alloc);
-
-    return 0;
-}
 
