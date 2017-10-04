@@ -10,7 +10,6 @@ Features:
 * Zoning possible (multiple allocators)
 * Block splitting
 * Block coalescing
-* TODO: Redo diagrams
 * TODO: I have a wilderness but don't extend it on exhaustion.
 * TODO: Binning / pre-allocation etc.
 * Err, that's about it!
