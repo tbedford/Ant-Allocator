@@ -260,10 +260,10 @@ If a system does a lot of small allocations MIN_FRAG could be reduced
 from 128 to say 64. Another option might be to have a custom allocator
 just for small allocation, such as those for small strings.
 
-There's an annoying complication you have to deal with, and that's the
-case where the block you are splitting is the last block on the list -
-there's no block after it, so you need to allow for that in your
-pointer code. See the source code for details.
+>There's an annoying complication you have to deal with, and that's the
+>case where the block you are splitting is the last block on the list -
+>there's no block after it, so you need to allow for that in your
+>pointer code. See the source code for details.
 
 ## Coalescing blocks
 
@@ -326,10 +326,10 @@ void coalesce_blocks (allocator_t *alloc, block_hdr_t *p2)
 }
 ```
 
-There's a slight complication in that if you the block you are working
-with is the last in the list there is no block after it, so the code
-needs to deal with that. It's an annoying complication, but there's
-nothing for it, you have to deal with it.
+>There's a slight complication in that if you the block you are working
+>with is the last in the list there is no block after it, so the code
+>needs to deal with that. It's an annoying complication, but there's
+>nothing for it, you have to deal with it.
 
 ## Alignment
 
