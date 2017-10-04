@@ -6,6 +6,9 @@
 
 void allocator_create (allocator_t *alloc, size_t s)
 {
+
+    BLOCK_HDR_SZ = sizeof(block_hdr_t); // set global value
+
     alloc->sys_mem = malloc(s); // replace by kernel system call
     alloc->sys_mem_sz = s;
 

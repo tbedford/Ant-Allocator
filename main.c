@@ -88,8 +88,6 @@ int main (int argc, char **argv)
 {
     // This could be useful for tracing
 //    printf ("FILE:%s LINE:%d\n", __FILE__, __LINE__);
-    
-    BLOCK_HDR_SZ = sizeof(block_hdr_t); // set global value
 
     test1();
     test2();
