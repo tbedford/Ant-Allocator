@@ -2,13 +2,54 @@
 
 #include "ant_allocator.h"
 
-// Main
-
-int main (int argc, char **argv)
+// PURPOSE: simple alloc and free in sequence
+void test1()
 {
-    printf ("FILE:%s LINE:%d\n", __FILE__, __LINE__);
+    allocator_t alloc;
+    size_t heap_sz = 16000;
+
+    allocator_create(&alloc, heap_sz);
+
+    void *p1 = ant_alloc(&alloc, 2000);
+    void *p2 = ant_alloc(&alloc, 1000);
+    void *p3 = ant_alloc(&alloc, 3000);
     
-    BLOCK_HDR_SZ = sizeof(block_hdr_t);
+    ant_free (&alloc, p1);
+    ant_free (&alloc, p2);
+    ant_free (&alloc, p3);
+    
+    dump_heap(&alloc);
+    check_heap(&alloc);
+    allocator_destroy (&alloc);
+
+}
+
+// PURPOSE: test case where we free middle block first
+void test2()
+{
+    allocator_t alloc;
+    size_t heap_sz = 16000;
+
+    allocator_create(&alloc, heap_sz);
+
+    void *p1 = ant_alloc(&alloc, 2000);
+    void *p2 = ant_alloc(&alloc, 1000);
+    void *p3 = ant_alloc(&alloc, 3000);
+    
+    ant_free (&alloc, p2);
+    ant_free (&alloc, p3);
+    ant_free (&alloc, p1);
+    
+    dump_heap(&alloc);
+    check_heap(&alloc);
+    allocator_destroy (&alloc);
+
+}
+
+
+// PURPOSE: test both block splitting and block coalescing
+void test3 ()
+{
     allocator_t alloc;
     size_t heap_sz = 16000;
 
@@ -38,6 +79,21 @@ int main (int argc, char **argv)
     dump_heap(&alloc);
     check_heap(&alloc);
     allocator_destroy (&alloc);
+}
 
+
+// Main
+
+int main (int argc, char **argv)
+{
+    // This could be useful for tracing
+//    printf ("FILE:%s LINE:%d\n", __FILE__, __LINE__);
+    
+    BLOCK_HDR_SZ = sizeof(block_hdr_t); // set global value
+
+    test1();
+    test2();
+    test3();
+    
     return 0;
 }

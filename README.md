@@ -360,8 +360,6 @@ You can then run the test program by typing the following:
 ```
 
 
-
-
 ## Tips on writing your own
 
 1. It's not conceptually hard, it's the pointer manipulation that

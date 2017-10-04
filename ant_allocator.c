@@ -225,9 +225,7 @@ void ant_free (allocator_t *alloc, void *p)
     {
         if (blk->prev->free == true)
         {
-            printf("Coalesce left hand block.\n");
             coalesce_blocks(alloc, blk);
-        
         }
     }
     // check right-hand block
