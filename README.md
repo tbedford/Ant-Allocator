@@ -71,23 +71,24 @@ typedef struct memobj_s {
 
 ## Details
 
-1. Initializing the list. 
+### Initializing the list. 
 
-   Because there's no wilderness when the heap is created you have a
-   free block list that consists of one big free block. This is not
-   too bad to set up.
+Because there's no wilderness when the heap is created you have a free
+block list that consists of one big free block. This is not too bad to
+set up.
 
 ![Initialized block list](./images/initialized_list.png)
 
-2. First allocation
+### First allocation
 
-   After the first allocation we have the following:
+After the first allocation we have the following:
 
 ![First allocation](./images/first_allocation.png)
 
 There are two things we need to do:
-    a. Recalculate the new size of the free block
-    b. Figure out the pointer to the allocated block
+
+* a. Recalculate the new size of the free block
+* b. Figure out the pointer to the allocated block
 
 a. To calculate the new size of the free block:
 
@@ -101,7 +102,7 @@ simplest:
     
 The returned memory object would contain p and requested_size. 
 
-3. After several allocations
+### After several allocations
 
 Here's the situation after several allocations:
 
