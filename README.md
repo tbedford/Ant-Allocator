@@ -68,13 +68,19 @@ There are some new gotchas too:
    multiple of the block header size. This has the advantage that when
    you split a block (and you are doing that based on a request that's
    rounded up), you are left with a block that is able to contains the
-   block header.
+   block header. This is a genius idea that I "borrowed" from
+   Xinu. MBed OS seems to do something similar.
 
 4. And yet another issue related to the previous one. When we
    initialize the heap we should make sure that the heap size is a
-   mutliple of BLOCKHDR_SZ. Otherwise we will again end up with odd
+   multiple of BLOCKHDR_SZ. Otherwise we will again end up with odd
    fragments of memory that could prove problematic (a free block
-   that's not big enough to be added to a free list.)
+   that's not big enough to be added to a free list.) But why truncate
+   and no round? Well in embedded systems the system memory available
+   for heap is dictated by the hardware. There's some kind of fixed
+   memory map. So you can't round up, as that may exceed the actual
+   hardware memory available. Thus, you have to truncate.
+   
 
 Here are the macros that will round up or down:
 
@@ -84,7 +90,7 @@ Here are the macros that will round up or down:
 ```
 
 The above macros are probably the cleverest bit in the whole allocator
-(they are fast too). 
+(they are fast too). Sadly they are not my idea! :(
 
 and some test code:
 
@@ -163,3 +169,6 @@ This shows the block to be freed. When you free the block you need to
 allow for the block header:
 
 ![freeing a block](./images/freeing_a_block.png)
+
+See the code for more details.
+
