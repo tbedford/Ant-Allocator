@@ -79,6 +79,37 @@ typedef struct memobj_s {
 
 ![Initialized block list](./images/initialized_list.png)
 
-2.
+2. First allocation
 
+   After the first allocation we have the following:
 
+![First allocation](./images/first_allocation.png)
+
+There are two things we need to do:
+    a. Recalculate the new size of the free block
+    b. Figure out the pointer to the allocated block
+
+a. To calculate the new size of the free block:
+
+    new_size = old_size - requested_size
+
+b. Calculating pointer: `rover` points at the free block. There are a
+couple of ways we can calculate this but the following seems the
+simplest:
+
+    p = rover + blockhdr_sz + new_size
+    
+The returned memory object would contain p and requested_size. 
+
+3. After several allocations
+
+Here's the situation after several allocations:
+
+![After several  allocations](./images/several_allocations.png)
+
+4. Block to be freed
+
+This shows the block to be freed. When you free the block you need to
+allow for the block header:
+
+![freeing a block](./images/freeing_a_block.png)
