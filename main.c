@@ -1,32 +1,22 @@
 #include <stdio.h>
-
 #include "ant_allocator.h"
 
 int main (int argc, char **argv)
 {
-    memobj_t mo[8];
-    
-    heap_create (8000);
 
-    // allocate
-    for (int i = 0; i < 8; i++){
-        if (ant_alloc(&mo[i], 1000))    {
-            printf("%d: Allocated OK\n", i);
-        }
+    for (int i=0; i<27; i++)
+    {
+        printf("%d %lu\n", i, roundmb(i));
+    }
+    
+    for (int i=0; i<27; i++)
+    {
+        printf("%d %lu\n", i, truncatemb(i));
     }
 
-    dump_heap();
+    printf("truncate 8192: %lu\n", truncatemb(8192));
+    printf("truncate 3371: %lu\n", truncatemb(3371));
+    printf("truncate 2314: %lu\n", truncatemb(2314));
 
-    // free
-    for (int i = 0; i < 8; i++){
-        if (ant_free(&mo[i]))    {
-            printf("%d: Freed OK\n", i);
-        }
-    }
-
-    dump_heap();
-    
-    heap_destroy ();
-    
     return 0;
 }

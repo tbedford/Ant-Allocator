@@ -52,22 +52,67 @@ There are some new gotchas too:
    talked about alignment yet either. If you requested seventeen bytes
    you'd not add the header, so when the block was deallocated you'd
    have a free block with a 16 byte header and 1 byte free. Oh dear.
- 
-2. `ant_alloc()` and `ant_free()` should be an improvement over
-   `malloc()` from a programmer's perspective. I want them to return a
-   bool to indicate success or failure. `ant_alloc()` should receive a
-   memory object and this is passed to `ant_free()` to deallocate the
-   object. A memory object looks like:
+  
+2. NOTE: There's a really subtle gotcha that I hadn't thought of
+   before. It happens when you find a block in the list that is bigger
+   than required. You can grab some of the free block for the
+   allocated mem if it's big enough - it has to be big enough to be
+   storeable in a link list when it's freed. That's one gotcha. Here's
+   another. We are effectively splitting a block here, and we are
+   checking the fragment that we are going to use as allocated
+   memory. But what about the shard we are leaving in the free list?
+   In other words there are two ways to look at this - when you split
+   a block they both need to be big enough to contain a block header.
    
+3. The solution to problem 2 is to round up block requests to a
+   multiple of the block header size. This has the advantage that when
+   you split a block (and you are doing that based on a request that's
+   rounded up), you are left with a block that is able to contains the
+   block header.
+
+4. And yet another issue related to the previous one. When we
+   initialize the heap we should make sure that the heap size is a
+   mutliple of BLOCKHDR_SZ. Otherwise we will again end up with odd
+   fragments of memory that could prove problematic (a free block
+   that's not big enough to be added to a free list.)
+
+Here are the macros that will round up or down:
+
 ``` C
-// Memory object
-typedef struct memobj_s {
-    void *ptr;
-    size_t size;
-} memobj_t;
+#define roundmb(s)  (size_t)((BLOCKHDR_SZ-1) + (size_t)(s)) & (~(BLOCKHDR_SZ-1)) 
+#define truncatemb(s) (size_t)( (size_t)(s) & (~(BLOCKHDR_SZ-1)) )
 ```
- 
-3. Something I haven't thought of yet! (There's always something)
+
+The above macros are probably the cleverest bit in the whole allocator
+(they are fast too). 
+
+and some test code:
+
+``` C
+#include <stdio.h>
+#include "ant_allocator.h"
+
+int main (int argc, char **argv)
+{
+
+    for (int i=0; i<27; i++)
+    {
+        printf("%d %lu\n", i, roundmb(i));
+    }
+    
+    for (int i=0; i<27; i++)
+    {
+        printf("%d %lu\n", i, truncatemb(i));
+    }
+
+    printf("truncate 8192: %lu\n", truncatemb(8192));
+    printf("truncate 3371: %lu\n", truncatemb(3371));
+    printf("truncate 2314: %lu\n", truncatemb(2314));
+
+    return 0;
+}
+
+```
 
 ## Details
 
@@ -101,6 +146,10 @@ simplest:
     p = rover + blockhdr_sz + new_size
     
 The returned memory object would contain p and requested_size. 
+
+NOTE: Another gotcha. When you add a constant to a block pointer you
+will get a problem because C will use pointer arithmetic. For example:
+given block_t *p then p + 1 will add 16 bytes, not 1 byte! Watch out!
 
 ### After several allocations
 

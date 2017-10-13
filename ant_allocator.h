@@ -4,7 +4,16 @@
 #define MIN_FRAG 64 // bytes
 #define BLOCKHDR_SZ 16 // platform-specific
 
-typedef enum { false, true } bool;
+// Nabbed idea from Xinu
+#define roundmb(s)  (size_t)((BLOCKHDR_SZ-1) + (size_t)(s)) & (~(BLOCKHDR_SZ-1)) 
+#define truncatemb(s) (size_t)( (size_t)(s) & (~(BLOCKHDR_SZ-1)) )
+
+typedef enum {false, true} bool;
+
+typedef struct memobj_s {
+    void * memptr;
+    size_t request_sz;
+} memobj_t;
 
 // Memory block header for free block
 typedef struct block_s {
@@ -12,30 +21,21 @@ typedef struct block_s {
     size_t block_sz; // includes block header
 } block_t;
 
-
-// list of FREE blocks
 typedef struct heap_s {
-    block_t *head; // points to start of first block in list
     size_t sysmem_sz; // size of memory grabbed from system
     void *sysmem; // pointer to grabbed system memory
-    size_t total_allocated_memory; // for debugging
 } heap_t;
-
-// Memory object
-typedef struct memobj_s {
-    void *mem;
-    size_t requested_sz;
-} memobj_t;
 
 // global heap
 heap_t heap; 
+block_t freelist;
 
 // Prototypes
 void heap_create (size_t heap_sz);
 void heap_destroy();
 void dump_heap ();
 
-bool ant_alloc (memobj_t *memobj, size_t usermem_sz);
-bool ant_free (memobj_t *memobj);
+void * ant_alloc (size_t request_sz);
+bool ant_free (void *memptr, size_t request_sz);
 
 #endif
