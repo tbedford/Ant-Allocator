@@ -262,7 +262,7 @@ need to do:
    
 It's actually easier to figure this out from looking at the code. 
 
-### Concurrency
+## Concurrency
 
 There a word we haven't mentioned so far and that's concurrency. The
 thing about a lot of embdedded OSs is they live in an interrupt driven
