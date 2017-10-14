@@ -225,11 +225,42 @@ See the code for more details.
 
 ### Block splitting
 
-TBD
+Now that the allocator uses mutliples of BLOCKHDR_SZ splitting a block
+becomes fairly simple. Given a free block and a split point the only
+thing you really need to do is adjust the size of the free block, and
+return a pointer to the allocated block.
 
 ### Block coalescing
 
-TBD
+Block coalescing is somewhat trickier than before. Here's what you
+need to do:
+
+1. You are asked to free an allocated block. The app gives you a
+   pointer (that it was given) and its orogonal request size (which it
+   keeps track of).
+
+2. You have to walk the list (the slight downside of this
+   implementation) to figure out where the newly created free block
+   will go. Note the free block list is kept in memory order for this
+   reason. 
+  
+3. You walk the list until you find the place in the list (of free
+   blocks) where the deallocation pointer dictates. 
+   
+4. Assuming (for this example) that there is a free block on the left
+   and the right then we have the possibility to coalesce all three
+   blocks into one big block. Note in this discussion I'm not going to
+   talk about special cases such as the block to be deallocated would
+   be at the end of the list and so on (see the source code for more
+   details). So, you check whether the left block is exactly adjacent
+   to the block to be freed and if so coalesce them together simply by
+   adjust the size of the block on the left. Now check the right free
+   block to see of it is exactly adjacent to this block. If it is
+   adjust the size again to encompass this new block. You also need to
+   adjust the next pointer to point to the block after the just
+   coalesced one (if there is a next block).
+   
+It's actually easier to figure this out from looking at the code. 
 
 ### Concurrency
 
@@ -263,6 +294,41 @@ For simplicity I did not add any concurrency-related code to my
 handler. So basically this is not a practical system allocator, or
 even application-level allocator in a concurrent environment (i.e. the
 real world). Sorry about that!
+
+## Heap exhaustion
+
+There's another problem with this (and similar) allocators - there's
+no restriction on how much memory a process can grab from the list. In
+a practical system you will have multiple processes all vying for
+memory. It is possible for one process to dominate and exhaust memory,
+preventing all other processes from runnning. One way of dealing with
+this is the use of memory pools. With memory pools you have lists of
+buffers of fixed size which can be allocated on a per-process
+basis. When a process uses up the buffers in its buffer pool it blocks
+until memory is freed (by some other process). This prevents one
+process deadlocking the rest of the system through un-checked memory
+consumption. Buffer pools will be the next project I work on.
+
+## Last words
+
+There are two insights that nassively simplify and improve the code,
+making it more robust:
+
+1. If you subtract a multiple of BLOCKHDR_SZ from a multiple of
+   BLOCKHDR_SZ the result will be a multiple of BLOCKHDR_SZ. This
+   insight leads to making sure the initial heap is truncated to a
+   multiple of BLOCKHDR_SZ and that subsequent allocation request
+   sizes are rounded to a multiple of BLOCKHDR_SZ. The simplifies the
+   code and removes complex code around checking fragment sizes and
+   dealing with edge cases.
+   
+2. Make the list header the same type as the list node (block)
+   type. Another subtle insight that simplifies the code. This allows
+   for simpler pointer manipulation at the stat of the list. You can
+   only really see this once you have implemented such code.
+   
+These are probably the most valuable insights I will take away from
+this project.
 
 ## References
 
