@@ -9,6 +9,7 @@ int main (int argc, char **argv)
 
     size_t request_sz = 1000;
     for (int i=0; i<8; i++){
+        memobj[i].request_sz = request_sz;
         memobj[i].memptr = ant_alloc(request_sz);
         if (memobj[i].memptr == NULL){
             printf("Allocation failed.\n");
@@ -16,6 +17,16 @@ int main (int argc, char **argv)
     }
     
     heap_dump();
+
+    for (int i=0; i<8; i++){
+        if (!ant_free(memobj[i].memptr, memobj[i].request_sz))
+        {
+            printf("Free failed.\n");
+        }
+    }
+
+    heap_dump();
+    
     heap_destroy();
 
     return 0;
