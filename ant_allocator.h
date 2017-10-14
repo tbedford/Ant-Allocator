@@ -33,7 +33,7 @@ block_t freelist;
 // Prototypes
 void heap_create (size_t heap_sz);
 void heap_destroy();
-void dump_heap ();
+void heap_dump ();
 
 void * ant_alloc (size_t request_sz);
 bool ant_free (void *memptr, size_t request_sz);

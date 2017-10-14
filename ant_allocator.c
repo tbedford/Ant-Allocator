@@ -7,14 +7,16 @@
 void heap_create (size_t heap_sz)
 {
     // system available mem map might not be multiple of BLOCKHDR_SZ
+    printf ("Heap size requested: %lu\n", heap_sz);
     heap_sz = truncatemb(heap_sz);
+    printf ("Heap size truncated: %lu\n", heap_sz);
     
     heap.sysmem = malloc(heap_sz); // replace by kernel system call
     heap.sysmem_sz = heap_sz;
 
     // One block on list (some platforms may have multiple initial blocks)
     freelist.next = (block_t *) heap.sysmem;
-    freelist.block_sz = heap.sysmem_sz;
+    freelist.next->block_sz = heap.sysmem_sz;
     freelist.next->next = NULL;
 }
 
@@ -30,11 +32,13 @@ void * ant_alloc (size_t request_sz)
 
     if (request_sz == 0)
     {
+        printf("You requested 0 bytes.\n");
         return NULL;
     }
 
     request_sz = roundmb(request_sz);
-
+    printf ("Rounded request size to: %lu\n", request_sz);
+    
     prev = &freelist;
     rover = freelist.next;
 
@@ -42,6 +46,7 @@ void * ant_alloc (size_t request_sz)
     {
         if (rover->block_sz == request_sz)
         {
+            printf("Exact size match!\n");
             prev->next = rover->next;
             freelist.block_sz = freelist.block_sz - request_sz;
 
@@ -49,6 +54,7 @@ void * ant_alloc (size_t request_sz)
         }
         else if (rover->block_sz > request_sz)
         {
+            printf("Found block larger than requested size.\n");
             // split block
             frag = (block_t *)((size_t)rover + request_sz);
             prev->next = frag;
@@ -61,6 +67,7 @@ void * ant_alloc (size_t request_sz)
         prev = rover;
         rover = rover->next;
     }
+    printf("Couldn't find suitable block.\n");
     return NULL;    
 }
 
@@ -133,7 +140,7 @@ bool ant_free (void *memptr, size_t request_sz)
     return true;    
 }
 
-void dump_heap ()
+void heap_dump ()
 {
     size_t total_sz = 0;
     block_t *rover = freelist.next;

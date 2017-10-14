@@ -3,20 +3,20 @@
 
 int main (int argc, char **argv)
 {
+    memobj_t memobj[8];
+    
+    heap_create(9000);
 
-    for (int i=0; i<27; i++)
-    {
-        printf("%d %lu\n", i, roundmb(i));
+    size_t request_sz = 1000;
+    for (int i=0; i<8; i++){
+        memobj[i].memptr = ant_alloc(request_sz);
+        if (memobj[i].memptr == NULL){
+            printf("Allocation failed.\n");
+        }
     }
     
-    for (int i=0; i<27; i++)
-    {
-        printf("%d %lu\n", i, truncatemb(i));
-    }
-
-    printf("truncate 8192: %lu\n", truncatemb(8192));
-    printf("truncate 3371: %lu\n", truncatemb(3371));
-    printf("truncate 2314: %lu\n", truncatemb(2314));
+    heap_dump();
+    heap_destroy();
 
     return 0;
 }
