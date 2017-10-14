@@ -214,7 +214,7 @@ Here's the situation after several allocations:
 
 ![After several  allocations](./images/several_allocations.png)
 
-4. Block to be freed
+### Block to be freed
 
 This shows the block to be freed. When you free the block you need to
 allow for the block header:
@@ -223,6 +223,46 @@ allow for the block header:
 
 See the code for more details.
 
+### Block splitting
+
+TBD
+
+### Block coalescing
+
+TBD
+
+### Concurrency
+
+There a word we haven't mentioned so far and that's concurrency. The
+thing about a lot of embdedded OSs is they live in an interrupt driven
+world and interrupts can go off at any time. An interrupt usually
+invokes an interrupt handler, and this may cause code to run other
+processes (code) to handle the aftermath of the interrupt. In other
+words a network packet arriving could generate an interrupt that
+causing code in the protocol stack to run, and that may need to
+allocate memory for buffers or free memory and so on. Putting it
+simply we may be in the code of our memory allocator when suddenly we
+are off doing something else and we now have a problem. Why? Because
+the memory allocator manipulates a linked list, and say adding a new
+node in the list takes several operations (copying of pointers) we
+can't be sure that we will finish our pointer jiggling before an
+interrupt goes off, which would leave our list in a pickle - and this
+would result in further mayhem of another process then started
+manipaulting the list and was istself interrupted. Very shortly we
+would have a crashed system on our hands. So what's the answer? There
+are several possible solutions, but looking at embedded operating
+systems like ARM Mbed OS and Xinu is pretty apparent they don't take
+any chances - they just disable interrupts while manipulating
+lists. Problem solved. One minor point - you do need to save the
+current interrupt mask before disabling interrupts, so that once you
+have manipulated your list you can restore things as they were before
+enabling interrupts again. It does seem somewhat archaic that in the
+21st century we need to worry about such details, but there you go!
+
+For simplicity I did not add any concurrency-related code to my
+handler. So basically this is not a practical system allocator, or
+even application-level allocator in a concurrent environment (i.e. the
+real world). Sorry about that!
 
 ## References
 
