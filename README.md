@@ -120,6 +120,57 @@ int main (int argc, char **argv)
 
 ```
 
+There are a few other points I will list here:
+
+1. Remember with free blocks we always need to preserve space for a
+   list (block) header.
+2. With allocated blocks we never care what's in them. They don't need
+   to have a list header in them, but they do need to be at least big
+   enough to store one.
+3. As long as we always round requests to a multiple of BLOCKHDR_SZ we
+   can be certain that a block will always be big enough to store a
+   list header. This is because if you always have a block that is
+   size multiple of BLOCKHDR_SZ and you subtract (split) off a
+   fragment of a multiple of BLOCKHDR_SZ you will always be left with
+   a block of a size which is a multiple of BLOCKHDR_SZ.
+4. I now store bock size in the block header rather than user memory
+   size. Why? Because the whole of the free block will be allocated,
+   it is more convenient to think in terms of block sizes. You have
+   much less adjustment of pointers too to find block size. When a
+   block is allocated we now never track the pointer to the block -
+   the app is responsible for that, so internally we can think in
+   terms of blocks sizes.
+5. When a user requests an allocation size we round and find a block
+   of that size. When the user requests that block to be free they
+   specify the original "un rounded" size that they have kept track
+   of. That means when they deallocate, specifying the ooriginal
+   requested size, we need to round *again* so that we actually
+   deallocate the correct size of memory. So there are two places we
+   round - on allocation and on free.
+   
+Another neat trick I "borrowed" from Xinu:
+
+Before I was using a fairly complicated list header structure to keep
+track of information about the heap and the beginning (and end) of the
+list. I referred to this data structure as "the heap" which wasn't a
+good name for it - it is really just a list header with additional
+info. So, I split the heap related info off into a heap data
+structure. I then created a new variable called `freelist` which is of
+type `block_t`. This is the list header. It just has a pointer (to the
+head of the list) and what would normally the size of the bock is used
+to contain the amount of allocated memory. There's a subtle point
+here. Having the list header as the same type as blocks in the free
+list (i.e. `block_t`) makes the code simpler in a surprising
+way. Because this is a singly-linked list (to reduce block header
+size) you have to keep trac of the `prev` pointer (which points at the
+block before your `rover` is pointer at). This makes the code simpler
+because at the start of the list `prev` can just point at the list
+header itself. `prev->next` points at the head of the list. There's
+none of the finickety special case code for dealing with processing a
+block at the start of the list. The code is just simpler. It's a
+really subtle point though and I guess is what separates the genius
+programmers like Douglas Comer from us mere mortals. Sigh.
+
 ## Details
 
 ### Initializing the list. 
@@ -172,3 +223,16 @@ allow for the block header:
 
 See the code for more details.
 
+
+## References
+
+* Operating System Design - The Xinu Approach by Douglas Comer (highly recommended)
+* [Xinu GitHub](https://github.com/xinu-os/xinu)
+* [Xinu web site](http://xinu-os.org/Main_Page)
+
+If you are interested in operating system internals and/or embedded
+systems I highly recommend you take a look at Xinu.
+
+I also took a sneaky peak at the ARM MBED OS code:
+
+* [ARM MBED OS on GitHub](https://github.com/ARMmbed/mbed-os)
