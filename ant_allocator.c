@@ -71,8 +71,8 @@ void * ant_alloc (size_t request_sz)
     return NULL;    
 }
 
-// NOTE: app must keep track of orogonal request size in order to free!!
-// Could change this to use memobj for convenience
+// NOTE: app must keep track of origonal request size
+// in order to free!!
 bool ant_free (void *memptr, size_t request_sz)
 {
 
@@ -84,6 +84,7 @@ bool ant_free (void *memptr, size_t request_sz)
         || ((size_t)memptr < (size_t)heap.sysmem)
         || ((size_t)memptr > (size_t)heap.sysmem + heap.sysmem_sz))
     {
+        printf("Block not in heap.\n");
         return false;
     }
 
@@ -120,6 +121,7 @@ bool ant_free (void *memptr, size_t request_sz)
     // coalesce with previous block if adjacent
     if (top == (size_t)block)
     {
+        printf("Left block adjacent.\n");
         prev->block_sz = prev->block_sz + request_sz;
         block = prev;
     }
@@ -133,6 +135,7 @@ bool ant_free (void *memptr, size_t request_sz)
     // coalesce with next block if adjacent
     if (((size_t)block + block->block_sz) == (size_t)next)
     {
+        printf("Right block adjacent.\n");
         block->block_sz = block->block_sz + next->block_sz;
         block->next = next->next;
     }
