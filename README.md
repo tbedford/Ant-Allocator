@@ -265,35 +265,67 @@ It's actually easier to figure this out from looking at the code.
 ## Concurrency
 
 There a word we haven't mentioned so far and that's concurrency. The
-thing about a lot of embdedded OSs is they live in an interrupt driven
-world and interrupts can go off at any time. An interrupt usually
-invokes an interrupt handler, and this may cause code to run other
-processes (code) to handle the aftermath of the interrupt. In other
-words a network packet arriving could generate an interrupt that
-causing code in the protocol stack to run, and that may need to
-allocate memory for buffers or free memory and so on. Putting it
-simply we may be in the code of our memory allocator when suddenly we
-are off doing something else and we now have a problem. Why? Because
-the memory allocator manipulates a linked list, and say adding a new
-node in the list takes several operations (copying of pointers) we
-can't be sure that we will finish our pointer jiggling before an
-interrupt goes off, which would leave our list in a pickle - and this
-would result in further mayhem of another process then started
-manipaulting the list and was istself interrupted. Very shortly we
-would have a crashed system on our hands. So what's the answer? There
-are several possible solutions, but looking at embedded operating
-systems like ARM Mbed OS and Xinu is pretty apparent they don't take
-any chances - they just disable interrupts while manipulating
-lists. Problem solved. One minor point - you do need to save the
-current interrupt mask before disabling interrupts, so that once you
-have manipulated your list you can restore things as they were before
-enabling interrupts again. It does seem somewhat archaic that in the
-21st century we need to worry about such details, but there you go!
+thing about a lot of embdedded OSs is they live in an interrupt-driven
+world and interrupts can go off at any time. 
 
-For simplicity I did not add any concurrency-related code to my
-handler. So basically this is not a practical system allocator, or
-even application-level allocator in a concurrent environment (i.e. the
-real world). Sorry about that!
+An interrupt usually invokes an interrupt handler, and this may cause
+code to run other processes (code) to handle the aftermath of the
+interrupt. For example, a network packet arriving could generate an
+interrupt that is causing code in the protocol stack to run, and that may
+need to allocate memory for buffers or free memory and so on.
+
+Putting it simply we may be in the code of our memory allocator when
+suddenly we are off doing something else and we now have a
+problem. Why? Because the memory allocator manipulates a linked-list,
+and say adding a new node in the list takes several operations
+(copying of pointers) we can't be sure that we will finish our pointer
+jiggling before an interrupt goes off, which would leave our list in a
+pickle. This would result in further mayhem of another process then
+started manipulating the list and was itself interrupted. Very shortly
+we would have a crashed system on our hands.
+
+So what's the answer? There are several possible solutions, but
+looking at embedded operating systems like ARM Mbed OS and Xinu is
+pretty apparent they don't take any chances - they just disable
+interrupts while manipulating lists. Problem solved. 
+
+One minor point - you do need to save the current interrupt mask
+before disabling interrupts, so that once you have manipulated your
+list you can restore things as they were before enabling interrupts
+again. It does seem somewhat archaic that in the 21st century we need
+to worry about such details, but there you go!
+
+There's another issue with general purpose system-level memory
+allocators in a modern multi-process, multi-thread, multi-core
+environment. Lock contention. We saw already that in embedded systems
+you can switch off interrupts. In more complex operating systems you
+have to include locking around the system memory allocator. However,
+in heavily threaded applications, were for example one thread is
+created per incoming connection (to the database or web server), where
+these threads need access to the system memory allocator you can run
+into problems around lock contention. As more threads (connections)
+are created you get more contention around locks on the memory
+allocator (and other sub-systems) which degrades performance.
+
+Is there a solution to this?
+
+Yes - give each thread its own heap. There are no locking/critical
+section issues because that heap is only ever accessed by one
+thread. You just call the system allocator to get memory at thread
+startup. You then use an instance of the allocator class to allocate
+and free. This is quite a good solution as you can then tune the
+allocator to the thread's needs. If you combine this with a memory
+pool (buffer pool) allocator you can have low fragmentation and avoid
+lock contention. This give performance a significant boost.
+
+For simplicity I did not add any concurrency-related code to this
+allocator. So basically this is not a practical system allocator.
+
+In the future I plan to provide a set of C++ classes to provide
+multiple allocators that can be used on a per-thread basis to get
+around lock contention and fragmentation. You do run into a new
+problem if you want to share data (memory) between threads, but that's
+another story for another day!
 
 ## Heap exhaustion
 
@@ -311,8 +343,8 @@ consumption. Buffer pools will be the next project I work on.
 
 ## Last words
 
-There are two insights that nassively simplify and improve the code,
-making it more robust:
+There are two insights that nassively simplify and improve this
+implementation, making it more robust:
 
 1. If you subtract a multiple of BLOCKHDR_SZ from a multiple of
    BLOCKHDR_SZ the result will be a multiple of BLOCKHDR_SZ. This
