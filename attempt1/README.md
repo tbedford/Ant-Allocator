@@ -1,7 +1,5 @@
 # Ant-Allocator
 
-*Currently under construction (but should compile and run).*
-
 A simple memory allocator for educational purposes.
 
 Features:
